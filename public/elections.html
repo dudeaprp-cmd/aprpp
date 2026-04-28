@@ -3,65 +3,733 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Hall of Elections | APRP Federal Archives</title>
-  <link rel="stylesheet" href="assets/css/app.css" />
+  <meta
+    name="description"
+    content="APRP Hall of Elections with presidential election records, congressional control, party breakdowns, and electoral summaries."
+  />
+
+  <link rel="stylesheet" href="./assets/css/app.css" />
+
+  <style>
+    .elections-page {
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,.13), transparent 30%),
+        radial-gradient(circle at top right, rgba(185,28,28,.11), transparent 34%),
+        var(--paper, #f4efe6);
+    }
+
+    .elections-hero {
+      padding-top: 74px;
+      padding-bottom: 26px;
+    }
+
+    .archive-home-return {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: fit-content;
+      margin-bottom: 14px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 950;
+      backdrop-filter: blur(10px);
+    }
+
+    .archive-home-return:hover,
+    .archive-home-return:focus {
+      background: rgba(255,255,255,.22);
+      outline: none;
+    }
+
+    .elections-page-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .elections-quick-access {
+      margin-top: 18px;
+    }
+
+    .elections-quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .elections-quick-grid .btn {
+      width: 100%;
+      justify-content: center;
+      min-height: 42px;
+      text-align: center;
+    }
+
+    .elections-layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .elections-sidebar {
+      position: sticky;
+      top: 86px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .election-card,
+    .election-filter-card,
+    .election-feature-card,
+    .election-control-card {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: var(--radius-lg, 22px);
+      background: rgba(255,255,255,.86);
+      box-shadow: var(--shadow-soft, 0 18px 45px rgba(15,23,42,.08));
+    }
+
+    .election-filter-card {
+      padding: 16px;
+    }
+
+    .election-filter-card h3 {
+      margin: 0 0 10px;
+      font-family: Georgia, serif;
+      font-size: 1.15rem;
+    }
+
+    .election-field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .election-field label {
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--blue, #2563eb);
+    }
+
+    .election-field input,
+    .election-field select {
+      width: 100%;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 12px;
+      padding: 10px 11px;
+      font: inherit;
+      background: white;
+      color: var(--ink, #111827);
+      outline: none;
+    }
+
+    .election-stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .election-stat {
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      background: rgba(255,255,255,.72);
+    }
+
+    .election-stat strong {
+      display: block;
+      font-size: 1.25rem;
+      line-height: 1;
+      color: var(--ink, #111827);
+    }
+
+    .election-stat span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted, #64748b);
+      font-size: .72rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .election-feature-card {
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(7,17,31,.98), rgba(13,28,51,.94)),
+        var(--navy-950, #07111f);
+      color: white;
+    }
+
+    .election-feature-inner {
+      padding: 16px;
+    }
+
+    .election-feature-card .eyebrow {
+      color: #93c5fd;
+    }
+
+    .election-feature-card h3 {
+      margin: 6px 0 8px;
+      color: white;
+      font-family: Georgia, serif;
+      font-size: 1.35rem;
+      line-height: 1.05;
+    }
+
+    .election-feature-card p {
+      color: #d8e4f6;
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .elections-main {
+      min-width: 0;
+      display: grid;
+      gap: 14px;
+    }
+
+    .elections-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: var(--radius-lg, 22px);
+      background: rgba(255,255,255,.78);
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      box-shadow: var(--shadow-soft, 0 18px 45px rgba(15,23,42,.08));
+    }
+
+    .elections-toolbar-left {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .election-chip {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 999px;
+      background: white;
+      color: var(--navy-900, #07111f);
+      padding: 8px 11px;
+      font-size: .78rem;
+      font-weight: 950;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .election-chip.is-active {
+      background: var(--navy-900, #07111f);
+      color: white;
+      border-color: var(--navy-900, #07111f);
+    }
+
+    .election-section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .election-section-title h2 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: clamp(1.65rem, 4vw, 2.4rem);
+      line-height: 1;
+    }
+
+    .election-section-title .line {
+      height: 1px;
+      flex: 1;
+      background: var(--border, rgba(15,23,42,.12));
+    }
+
+    .election-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .election-card {
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .election-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(37,99,235,.32);
+      box-shadow: 0 18px 46px rgba(7,17,31,.12);
+    }
+
+    .election-year-panel {
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      min-height: 180px;
+      color: white;
+      background:
+        linear-gradient(180deg, rgba(7,17,31,.96), rgba(13,28,51,.92)),
+        var(--navy-950, #07111f);
+      text-align: center;
+    }
+
+    .election-year-panel strong {
+      display: block;
+      font-family: Georgia, serif;
+      font-size: 2.4rem;
+      line-height: 1;
+    }
+
+    .election-year-panel span {
+      display: block;
+      margin-top: 8px;
+      color: #c7d6ee;
+      font-size: .78rem;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .election-info-panel {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .election-info-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .election-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: .68rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(37,99,235,.10);
+      color: #1d4ed8;
+      border: 1px solid rgba(37,99,235,.18);
+    }
+
+    .election-badge.red {
+      background: rgba(220,38,38,.10);
+      color: #b91c1c;
+      border-color: rgba(220,38,38,.20);
+    }
+
+    .election-badge.gold {
+      background: rgba(185,145,53,.12);
+      color: #8a6418;
+      border-color: rgba(185,145,53,.22);
+    }
+
+    .election-info-panel h3 {
+      margin: 0;
+      font-family: Georgia, serif;
+      color: var(--ink, #111827);
+      font-size: clamp(1.45rem, 3vw, 2.1rem);
+      line-height: 1.05;
+    }
+
+    .election-summary {
+      margin: 0;
+      color: var(--muted, #64748b);
+      line-height: 1.5;
+    }
+
+    .election-results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .election-result-tile {
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      background: rgba(255,255,255,.72);
+    }
+
+    .election-result-tile strong {
+      display: block;
+      color: var(--blue, #2563eb);
+      font-size: .68rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      font-weight: 950;
+    }
+
+    .election-result-tile span {
+      display: block;
+      margin-top: 5px;
+      color: var(--ink, #111827);
+      font-weight: 900;
+      font-size: .98rem;
+      line-height: 1.2;
+    }
+
+    .election-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .election-actions a {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 999px;
+      padding: 8px 11px;
+      background: white;
+      color: var(--navy-900, #07111f);
+      text-decoration: none;
+      font-size: .78rem;
+      font-weight: 950;
+    }
+
+    .control-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .election-control-card {
+      padding: 16px;
+    }
+
+    .control-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .control-card-header h3 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: 1.45rem;
+    }
+
+    .party-bars {
+      display: grid;
+      gap: 10px;
+    }
+
+    .party-bar-row {
+      display: grid;
+      gap: 5px;
+    }
+
+    .party-bar-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted, #64748b);
+      font-size: .82rem;
+      font-weight: 850;
+    }
+
+    .party-bar-track {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(15,23,42,.10);
+      display: flex;
+    }
+
+    .party-bar-fill {
+      height: 100%;
+    }
+
+    .party-bar-fill.dnc {
+      background: #2563eb;
+    }
+
+    .party-bar-fill.gop {
+      background: #dc2626;
+    }
+
+    .party-bar-fill.ind {
+      background: #7c3aed;
+    }
+
+    .party-bar-fill.vacant {
+      background: #94a3b8;
+    }
+
+    .elections-empty {
+      padding: 22px;
+      text-align: center;
+      color: var(--muted, #64748b);
+      border: 1px dashed var(--border, rgba(15,23,42,.12));
+      border-radius: var(--radius-lg, 22px);
+      background: rgba(255,255,255,.6);
+    }
+
+    @media (max-width: 1050px) {
+      .elections-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .elections-sidebar {
+        position: static;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .elections-quick-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .archive-home-return {
+        width: 100%;
+      }
+
+      .hero-actions .btn,
+      .elections-page-links .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .elections-sidebar {
+        grid-template-columns: 1fr;
+      }
+
+      .election-card {
+        grid-template-columns: 1fr;
+      }
+
+      .election-year-panel {
+        min-height: 120px;
+      }
+
+      .election-results-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .elections-quick-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-<body>
-  <header class="page-header">
-    <nav class="topbar">
-      <a class="brand" href="index.html">
-        <span class="brand-seal">A</span>
-        <span>
-          <span class="brand-kicker">APRP Archives</span>
-          <strong>Office of Records</strong>
-        </span>
-      </a>
 
-      <div class="desktop-nav">
-        <a href="index.html">Home</a>
-        <a href="government.html">Government</a>
-        <a href="economy.html">Economy</a>
-        <a href="timeline.html">Timeline</a>
-        <a href="hall-of-presidents.html">Presidents</a>
-        <a class="nav-live" href="live-results.html">Live Results</a>
+<body class="elections-page">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="page-shell compact-page">
+    <header class="site-header" data-collapsing-header>
+      <div class="header-inner">
+        <a class="brand" href="./index.html" aria-label="APRP Federal Archives home">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">
+            <span class="brand-kicker">APRP Archives</span>
+            <span class="brand-title">Hall of Elections</span>
+          </span>
+        </a>
+
+        <nav class="primary-nav" data-aprp-nav aria-label="Primary navigation"></nav>
       </div>
-    </nav>
-  </header>
+    </header>
 
-  <main class="page-shell">
-    <a class="back-home-btn" href="index.html">← Archive Home</a>
+    <section class="archive-hero compact elections-hero">
+      <div class="hero-content">
+        <div>
+          <a class="archive-home-return" href="./index.html">← Archive Home</a>
 
-    <section class="section-card">
-      <p class="eyebrow blue">Electoral Records</p>
-      <h1>Hall of Elections</h1>
-      <p>Presidential election summaries, congressional control, party charts, and electoral history.</p>
+          <div class="hero-kicker">Electoral Records</div>
+          <h1 class="hero-title">Hall of Elections</h1>
+          <p class="hero-subtitle">
+            Presidential election outcomes, congressional control, party balance,
+            electoral vote summaries, popular vote records, and election-cycle notes.
+          </p>
 
-      <div class="page-link-grid">
-        <a href="live-results.html">Live Results</a>
-        <a href="election-calculator.html">Election Calculator</a>
-        <a href="government.html">Government</a>
-        <a href="hall-of-presidents.html">Presidents</a>
+          <div class="hero-actions">
+            <a class="btn btn-blue" href="#presidential-elections">Presidential Elections</a>
+            <a class="btn btn-outline" href="#congress-control">Congress Control</a>
+            <a class="btn btn-outline" href="./live-results.html">Live Results</a>
+          </div>
+
+          <div class="elections-page-links">
+            <a class="btn btn-small btn-outline" href="./government.html">Government</a>
+            <a class="btn btn-small btn-outline" href="./economy.html">Economy</a>
+            <a class="btn btn-small btn-outline" href="./timeline.html">Timeline</a>
+            <a class="btn btn-small btn-outline" href="./hall-of-presidents.html">Presidents</a>
+            <a class="btn btn-small btn-outline" href="./president-tierlist.html">Tier List</a>
+            <a class="btn btn-small btn-outline" href="./election-calculator.html">Election Calculator</a>
+          </div>
+        </div>
+
+        <aside class="hero-side-card">
+          <div class="eyebrow">Election Record</div>
+          <h2 id="elections-hero-title">Loading elections...</h2>
+          <p id="elections-hero-summary">Reading presidential and congressional election records.</p>
+        </aside>
       </div>
     </section>
 
-    <section class="section-card">
-      <div class="section-heading">
-        <p class="eyebrow blue">Control Charts</p>
-        <h2>Congressional Breakdown</h2>
-      </div>
+    <main id="main">
+      <section class="section section-tight elections-quick-access">
+        <div class="container-wide">
+          <div class="card compact-card">
+            <div class="eyebrow">Archive Navigation</div>
+            <h3>Public Record Sections</h3>
+            <p class="text-small">
+              Use these links to move between APRP archive pages. Every page links back to the Archive Home.
+            </p>
 
-      <div class="chart-placeholder">
-        Election and congressional charts load here.
-      </div>
-    </section>
-  </main>
+            <div class="elections-quick-grid">
+              <a class="btn btn-outline btn-small" href="./index.html">Archive Home</a>
+              <a class="btn btn-outline btn-small" href="./government.html">Government</a>
+              <a class="btn btn-outline btn-small" href="./economy.html">Economy</a>
+              <a class="btn btn-outline btn-small" href="./timeline.html">Timeline</a>
+              <a class="btn btn-outline btn-small" href="./hall-of-presidents.html">Presidents</a>
+              <a class="btn btn-outline btn-small" href="./president-tierlist.html">President Tier List</a>
+              <a class="btn btn-outline btn-small" href="./election-calculator.html">Election Calculator</a>
+              <a class="btn btn-red btn-small" href="./live-results.html">Live Results</a>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-    <a href="index.html">Home</a>
-    <a href="government.html">Gov</a>
-    <a href="economy.html">Econ</a>
-    <a href="hall-of-presidents.html">Pres</a>
-    <a href="live-results.html">Live</a>
-  </nav>
+      <section class="section section-tight">
+        <div class="container-wide">
+          <div class="elections-layout">
+            <aside class="elections-sidebar">
+              <section class="election-filter-card">
+                <h3>Filter Elections</h3>
+
+                <div class="election-field">
+                  <label for="elections-search">Search</label>
+                  <input id="elections-search" type="search" placeholder="Search year, winner, candidate..." />
+                </div>
+
+                <div class="election-field">
+                  <label for="elections-year-filter">Year</label>
+                  <select id="elections-year-filter">
+                    <option value="all">All Years</option>
+                  </select>
+                </div>
+
+                <div class="election-field">
+                  <label for="elections-type-filter">Election Type</label>
+                  <select id="elections-type-filter">
+                    <option value="all">All Types</option>
+                    <option value="president">Presidential</option>
+                    <option value="congress">Congressional Control</option>
+                  </select>
+                </div>
+
+                <div class="election-stat-grid">
+                  <div class="election-stat">
+                    <strong id="elections-total-count">0</strong>
+                    <span>Records</span>
+                  </div>
+                  <div class="election-stat">
+                    <strong id="elections-year-count">0</strong>
+                    <span>Years</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="election-feature-card">
+                <div class="election-feature-inner">
+                  <div class="eyebrow">Featured Election</div>
+                  <h3 id="elections-feature-title">Loading featured election...</h3>
+                  <p id="elections-feature-summary">Loading election record from the public archive sheet.</p>
+                </div>
+              </section>
+
+              <section class="election-filter-card">
+                <h3>Election Tools</h3>
+                <p class="text-small">
+                  Build a custom electoral map or watch the active live election feed.
+                </p>
+
+                <div class="elections-page-links">
+                  <a class="btn btn-small btn-blue" href="./election-calculator.html">Election Calculator</a>
+                  <a class="btn btn-small btn-red" href="./live-results.html">Live Results</a>
+                  <a class="btn btn-small btn-outline" href="./index.html">Archive Home</a>
+                </div>
+              </section>
+            </aside>
+
+            <section class="elections-main">
+              <div class="elections-toolbar">
+                <div class="elections-toolbar-left">
+                  <button class="election-chip is-active" type="button" data-election-quick="all">All</button>
+                  <button class="election-chip" type="button" data-election-quick="president">Presidential</button>
+                  <button class="election-chip" type="button" data-election-quick="congress">Congress</button>
+                  <button class="election-chip" type="button" data-election-quick="dnc">DNC Wins</button>
+                  <button class="election-chip" type="button" data-election-quick="gop">GOP Wins</button>
+                </div>
+
+                <a class="election-chip" href="./election-calculator.html">Open Calculator</a>
+              </div>
+
+              <section id="presidential-elections">
+                <div class="election-section-title">
+                  <h2>Presidential Elections</h2>
+                  <div class="line"></div>
+                </div>
+
+                <div id="presidential-election-list" class="election-list">
+                  <div class="elections-empty">Loading presidential elections...</div>
+                </div>
+              </section>
+
+              <section id="congress-control">
+                <div class="election-section-title">
+                  <h2>Congressional Control</h2>
+                  <div class="line"></div>
+                </div>
+
+                <div id="congress-control-list" class="control-list">
+                  <div class="elections-empty">Loading congressional control records...</div>
+                </div>
+              </section>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>APRP Federal Archives</strong>
+          <div class="text-small">Election records generated from public APRP election sheets.</div>
+        </div>
+        <div class="text-small">Office of Electoral Records</div>
+      </div>
+    </footer>
+
+    <nav class="mobile-bottom-nav" data-mobile-nav aria-label="Mobile navigation"></nav>
+  </div>
+
+  <script src="./assets/js/sheets.js"></script>
+  <script src="./assets/js/shared.js"></script>
+  <script src="./assets/js/elections.js"></script>
 </body>
 </html>
