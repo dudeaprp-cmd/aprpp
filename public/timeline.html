@@ -3,68 +3,635 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Timeline | APRP Federal Archives</title>
-  <link rel="stylesheet" href="assets/css/app.css" />
+  <meta
+    name="description"
+    content="APRP Federal Archives timeline of major political, economic, diplomatic, security, and administration events."
+  />
+
+  <link rel="stylesheet" href="./assets/css/app.css" />
+
+  <style>
+    .timeline-page {
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,.13), transparent 30%),
+        radial-gradient(circle at top right, rgba(185,28,28,.10), transparent 32%),
+        var(--paper);
+    }
+
+    .timeline-hero {
+      padding-top: 74px;
+      padding-bottom: 26px;
+    }
+
+    .archive-home-return {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: fit-content;
+      margin-bottom: 14px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 950;
+      backdrop-filter: blur(10px);
+    }
+
+    .archive-home-return:hover,
+    .archive-home-return:focus {
+      background: rgba(255,255,255,.22);
+      outline: none;
+    }
+
+    .timeline-page-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .timeline-quick-access {
+      margin-top: 18px;
+    }
+
+    .timeline-quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .timeline-quick-grid .btn {
+      width: 100%;
+      justify-content: center;
+      min-height: 42px;
+      text-align: center;
+    }
+
+    .timeline-layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .timeline-sidebar {
+      position: sticky;
+      top: 86px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .timeline-filter-card,
+    .timeline-feature-card,
+    .timeline-event-card,
+    .timeline-detail-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: rgba(255,255,255,.86);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .timeline-filter-card {
+      padding: 16px;
+    }
+
+    .timeline-filter-card h3 {
+      margin: 0 0 10px;
+      font-family: Georgia, serif;
+      font-size: 1.15rem;
+    }
+
+    .timeline-field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .timeline-field label {
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+
+    .timeline-field input,
+    .timeline-field select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 11px;
+      font: inherit;
+      background: white;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .timeline-field input:focus,
+    .timeline-field select:focus {
+      border-color: rgba(37,99,235,.55);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.13);
+    }
+
+    .timeline-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .timeline-stat {
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.72);
+    }
+
+    .timeline-stat strong {
+      display: block;
+      font-size: 1.25rem;
+      line-height: 1;
+      color: var(--ink);
+    }
+
+    .timeline-stat span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: .72rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .timeline-feature-card {
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(7,17,31,.98), rgba(13,28,51,.94)),
+        var(--navy-950);
+      color: white;
+    }
+
+    .timeline-feature-inner {
+      padding: 16px;
+    }
+
+    .timeline-feature-card .eyebrow {
+      color: #93c5fd;
+    }
+
+    .timeline-feature-card h3 {
+      margin: 6px 0 8px;
+      color: white;
+      font-family: Georgia, serif;
+      font-size: 1.35rem;
+      line-height: 1.05;
+    }
+
+    .timeline-feature-card p {
+      color: #d8e4f6;
+      margin: 0;
+    }
+
+    .timeline-main {
+      min-width: 0;
+      display: grid;
+      gap: 14px;
+    }
+
+    .timeline-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: var(--radius-lg);
+      background: rgba(255,255,255,.78);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .timeline-toolbar-left {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .timeline-chip {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: white;
+      color: var(--navy-900);
+      padding: 8px 11px;
+      font-size: .78rem;
+      font-weight: 950;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .timeline-chip.is-active {
+      background: var(--navy-900);
+      color: white;
+      border-color: var(--navy-900);
+    }
+
+    .timeline-group {
+      display: grid;
+      gap: 10px;
+    }
+
+    .timeline-year-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .timeline-year-header h2 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: 2.1rem;
+      line-height: 1;
+    }
+
+    .timeline-year-line {
+      height: 1px;
+      flex: 1;
+      background: var(--border);
+    }
+
+    .timeline-event-card {
+      display: grid;
+      grid-template-columns: 105px minmax(0, 1fr) auto;
+      gap: 14px;
+      padding: 14px;
+      cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .timeline-event-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(37,99,235,.32);
+      box-shadow: 0 18px 46px rgba(7,17,31,.12);
+    }
+
+    .timeline-date-block {
+      border-radius: 16px;
+      padding: 10px;
+      background:
+        linear-gradient(180deg, rgba(7,17,31,.95), rgba(13,28,51,.92)),
+        var(--navy-950);
+      color: white;
+      min-height: 82px;
+    }
+
+    .timeline-date-block strong {
+      display: block;
+      font-family: Georgia, serif;
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .timeline-date-block span {
+      display: block;
+      margin-top: 6px;
+      color: #c7d6ee;
+      font-size: .72rem;
+      font-weight: 850;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .timeline-event-body {
+      min-width: 0;
+    }
+
+    .timeline-event-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+
+    .timeline-category {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: .68rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(37,99,235,.10);
+      color: #1d4ed8;
+      border: 1px solid rgba(37,99,235,.18);
+    }
+
+    .timeline-importance {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: .68rem;
+      font-weight: 950;
+      background: rgba(7,17,31,.06);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .timeline-event-body h3 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: 1.35rem;
+      line-height: 1.08;
+      color: var(--ink);
+    }
+
+    .timeline-event-body p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .timeline-event-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timeline-open-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--navy-900);
+      padding: 8px 10px;
+      text-decoration: none;
+      font-size: .76rem;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .timeline-detail-card {
+      padding: 16px;
+    }
+
+    .timeline-detail-card h3 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: 1.3rem;
+    }
+
+    .timeline-detail-card p {
+      color: var(--muted);
+    }
+
+    .timeline-empty {
+      padding: 22px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-lg);
+      background: rgba(255,255,255,.6);
+    }
+
+    @media (max-width: 1050px) {
+      .timeline-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-sidebar {
+        position: static;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .timeline-quick-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .archive-home-return {
+        width: 100%;
+      }
+
+      .hero-actions .btn,
+      .timeline-page-links .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .timeline-sidebar {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-event-card {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-event-actions {
+        justify-content: start;
+      }
+
+      .timeline-date-block {
+        min-height: auto;
+      }
+
+      .timeline-quick-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-<body>
-  <header class="page-header">
-    <nav class="topbar">
-      <a class="brand" href="index.html">
-        <span class="brand-seal">A</span>
-        <span>
-          <span class="brand-kicker">APRP Archives</span>
-          <strong>Office of Records</strong>
-        </span>
-      </a>
 
-      <div class="desktop-nav">
-        <a href="index.html">Home</a>
-        <a href="government.html">Government</a>
-        <a href="economy.html">Economy</a>
-        <a href="hall-of-presidents.html">Presidents</a>
-        <a href="elections.html">Elections</a>
-        <a class="nav-live" href="live-results.html">Live Results</a>
+<body class="timeline-page">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="page-shell compact-page">
+    <header class="site-header" data-collapsing-header>
+      <div class="header-inner">
+        <a class="brand" href="./index.html" aria-label="APRP Federal Archives home">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">
+            <span class="brand-kicker">APRP Archives</span>
+            <span class="brand-title">Timeline</span>
+          </span>
+        </a>
+
+        <nav class="primary-nav" data-aprp-nav aria-label="Primary navigation"></nav>
       </div>
-    </nav>
-  </header>
+    </header>
 
-  <main class="page-shell">
-    <a class="back-home-btn" href="index.html">← Archive Home</a>
+    <section class="archive-hero compact timeline-hero">
+      <div class="hero-content">
+        <div>
+          <a class="archive-home-return" href="./index.html">← Archive Home</a>
 
-    <section class="section-card">
-      <p class="eyebrow blue">Historical Records</p>
-      <h1>Timeline & Events</h1>
-      <p>Major events, crises, elections, foreign policy, economic shocks, and administration records.</p>
+          <div class="hero-kicker">Major Public Record</div>
+          <h1 class="hero-title">Timeline Archive</h1>
+          <p class="hero-subtitle">
+            A compact chronological record of APRP events, crises, legislation, economic turns,
+            elections, diplomatic moments, and administration milestones.
+          </p>
 
-      <div class="page-link-grid">
-        <a href="government.html">Government</a>
-        <a href="economy.html">Economy</a>
-        <a href="hall-of-presidents.html">Presidents</a>
-        <a href="elections.html">Elections</a>
+          <div class="hero-actions">
+            <a class="btn btn-blue" href="#timeline-list">View Timeline</a>
+            <a class="btn btn-outline" href="./government.html">Government</a>
+            <a class="btn btn-outline" href="./economy.html">Economy</a>
+          </div>
+
+          <div class="timeline-page-links">
+            <a class="btn btn-small btn-outline" href="./hall-of-presidents.html">Presidents</a>
+            <a class="btn btn-small btn-outline" href="./elections.html">Elections</a>
+            <a class="btn btn-small btn-outline" href="./president-tierlist.html">Tier List</a>
+            <a class="btn btn-small btn-outline" href="./election-calculator.html">Election Calculator</a>
+            <a class="btn btn-small btn-red" href="./live-results.html">Live Results</a>
+          </div>
+        </div>
+
+        <aside class="hero-side-card">
+          <div class="eyebrow">Current Filter</div>
+          <h2 id="timeline-filter-title">All Events</h2>
+          <p id="timeline-filter-summary">Loading public timeline records...</p>
+        </aside>
       </div>
     </section>
 
-    <section class="section-card">
-      <div class="section-heading">
-        <p class="eyebrow blue">Event Filters</p>
-        <h2>Archive Search</h2>
-      </div>
+    <main id="main">
+      <section class="section section-tight timeline-quick-access">
+        <div class="container-wide">
+          <div class="card compact-card">
+            <div class="eyebrow">Archive Navigation</div>
+            <h3>Public Record Sections</h3>
+            <p class="text-small">
+              Use these links to move between APRP archive pages. Every page links back to the Archive Home.
+            </p>
 
-      <div class="filter-grid">
-        <input type="search" placeholder="Search timeline..." />
-        <select><option>All Years</option></select>
-        <select><option>All Categories</option></select>
-        <select><option>All Importance</option></select>
-      </div>
-    </section>
-  </main>
+            <div class="timeline-quick-grid">
+              <a class="btn btn-outline btn-small" href="./index.html">Archive Home</a>
+              <a class="btn btn-outline btn-small" href="./government.html">Government</a>
+              <a class="btn btn-outline btn-small" href="./economy.html">Economy</a>
+              <a class="btn btn-outline btn-small" href="./hall-of-presidents.html">Presidents</a>
+              <a class="btn btn-outline btn-small" href="./elections.html">Elections</a>
+              <a class="btn btn-outline btn-small" href="./president-tierlist.html">President Tier List</a>
+              <a class="btn btn-outline btn-small" href="./election-calculator.html">Election Calculator</a>
+              <a class="btn btn-red btn-small" href="./live-results.html">Live Results</a>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-    <a href="index.html">Home</a>
-    <a href="government.html">Gov</a>
-    <a href="economy.html">Econ</a>
-    <a href="hall-of-presidents.html">Pres</a>
-    <a href="live-results.html">Live</a>
-  </nav>
+      <section class="section section-tight">
+        <div class="container-wide">
+          <div class="timeline-layout">
+            <aside class="timeline-sidebar">
+              <section class="timeline-filter-card">
+                <h3>Filter Timeline</h3>
+
+                <div class="timeline-field">
+                  <label for="timeline-search">Search</label>
+                  <input id="timeline-search" type="search" placeholder="Search events, summaries, years..." />
+                </div>
+
+                <div class="timeline-field">
+                  <label for="timeline-category-filter">Category</label>
+                  <select id="timeline-category-filter">
+                    <option value="all">All Categories</option>
+                  </select>
+                </div>
+
+                <div class="timeline-field">
+                  <label for="timeline-year-filter">Year</label>
+                  <select id="timeline-year-filter">
+                    <option value="all">All Years</option>
+                  </select>
+                </div>
+
+                <div class="timeline-field">
+                  <label for="timeline-importance-filter">Importance</label>
+                  <select id="timeline-importance-filter">
+                    <option value="all">All Events</option>
+                    <option value="major">Major Only 80+</option>
+                    <option value="high">High 60+</option>
+                    <option value="normal">Normal / Any</option>
+                  </select>
+                </div>
+
+                <div class="timeline-stats-grid">
+                  <div class="timeline-stat">
+                    <strong id="timeline-total-count">0</strong>
+                    <span>Events</span>
+                  </div>
+
+                  <div class="timeline-stat">
+                    <strong id="timeline-major-count">0</strong>
+                    <span>Major</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="timeline-feature-card">
+                <div class="timeline-feature-inner">
+                  <div class="eyebrow">Featured Record</div>
+                  <h3 id="timeline-feature-title">Loading featured event...</h3>
+                  <p id="timeline-feature-summary">Loading major archive item from the public sheet.</p>
+                </div>
+              </section>
+
+              <section class="timeline-detail-card" id="timeline-selected-detail">
+                <div class="eyebrow">Selected Event</div>
+                <h3>Choose an event</h3>
+                <p>Click any timeline record to preview the full summary, category, date, and source link.</p>
+              </section>
+            </aside>
+
+            <section class="timeline-main">
+              <div class="timeline-toolbar">
+                <div class="timeline-toolbar-left">
+                  <button class="timeline-chip is-active" type="button" data-quick-filter="all">All</button>
+                  <button class="timeline-chip" type="button" data-quick-filter="major">Major</button>
+                  <button class="timeline-chip" type="button" data-quick-filter="crisis">Crises</button>
+                  <button class="timeline-chip" type="button" data-quick-filter="economic">Economic</button>
+                  <button class="timeline-chip" type="button" data-quick-filter="election">Elections</button>
+                </div>
+
+                <button class="timeline-chip" type="button" id="timeline-sort-toggle">Newest First</button>
+              </div>
+
+              <div id="timeline-list" class="timeline-list">
+                <div class="timeline-empty">Loading timeline records...</div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>APRP Federal Archives</strong>
+          <div class="text-small">Timeline generated from public APRP records.</div>
+        </div>
+        <div class="text-small">Office of Records & Historical Preservation</div>
+      </div>
+    </footer>
+
+    <nav class="mobile-bottom-nav" data-mobile-nav aria-label="Mobile navigation"></nav>
+  </div>
+
+  <script src="./assets/js/sheets.js"></script>
+  <script src="./assets/js/shared.js"></script>
+  <script src="./assets/js/timeline.js"></script>
 </body>
 </html>
