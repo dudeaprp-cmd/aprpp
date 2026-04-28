@@ -5,29 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>President Tier List | APRP Federal Archives</title>
-  <meta
-    name="description"
-    content="APRP Federal Archives interactive presidential tier list and historical ranking page."
-  />
 
   <link rel="stylesheet" href="./assets/css/app.css" />
 
   <style>
     .tier-page {
       background:
-        radial-gradient(circle at top left, rgba(37,99,235,.14), transparent 30%),
+        radial-gradient(circle at top left, rgba(37,99,235,.13), transparent 30%),
         radial-gradient(circle at top right, rgba(185,28,28,.10), transparent 34%),
-        var(--paper);
+        var(--paper, #f4efe6);
     }
 
     .tier-hero {
       padding-top: 74px;
-      padding-bottom: 24px;
+      padding-bottom: 26px;
     }
 
-    .tier-dashboard {
+    .archive-home-return {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: fit-content;
+      margin-bottom: 14px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 950;
+      backdrop-filter: blur(10px);
+    }
+
+    .archive-home-return:hover,
+    .archive-home-return:focus {
+      background: rgba(255,255,255,.22);
+      outline: none;
+    }
+
+    .tier-page-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .tier-layout {
       display: grid;
-      grid-template-columns: 300px minmax(0, 1fr);
+      grid-template-columns: 310px minmax(0, 1fr);
       gap: 18px;
       align-items: start;
     }
@@ -40,346 +66,268 @@
     }
 
     .tier-card,
-    .tier-panel,
-    .president-card,
-    .tier-row {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: rgba(255,255,255,.86);
-      box-shadow: var(--shadow-soft);
-    }
-
-    .tier-card {
+    .tier-board-card {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: var(--radius-lg, 22px);
+      background: rgba(255,255,255,.88);
+      box-shadow: var(--shadow-soft, 0 18px 45px rgba(15,23,42,.08));
       padding: 16px;
     }
 
-    .tier-card h3 {
+    .tier-card h3,
+    .tier-board-card h2 {
       margin: 0 0 10px;
       font-family: Georgia, serif;
-      font-size: 1.16rem;
+      color: var(--ink, #111827);
+      line-height: 1.05;
     }
 
-    .tier-field {
+    .tier-card p {
+      color: var(--muted, #64748b);
+      line-height: 1.45;
+      margin: 0 0 12px;
+    }
+
+    .tier-actions {
       display: grid;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
-    .tier-field label {
-      font-size: .72rem;
-      font-weight: 950;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--blue);
-    }
-
-    .tier-field input,
-    .tier-field select {
-      width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 11px;
-      font: inherit;
-      background: white;
-      color: var(--ink);
-      outline: none;
-    }
-
-    .tier-field input:focus,
-    .tier-field select:focus {
-      border-color: rgba(37,99,235,.55);
-      box-shadow: 0 0 0 3px rgba(37,99,235,.13);
-    }
-
-    .tier-stat-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
 
-    .tier-stat {
+    .tier-actions button,
+    .tier-actions a {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 999px;
+      padding: 9px 12px;
+      background: white;
+      color: var(--navy-900, #07111f);
+      text-decoration: none;
+      font-size: .82rem;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .tier-actions button.primary {
+      background: var(--navy-900, #07111f);
+      color: white;
+      border-color: var(--navy-900, #07111f);
+    }
+
+    .tier-actions button.danger {
+      background: #dc2626;
+      color: white;
+      border-color: #dc2626;
+    }
+
+    .tier-main {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .tier-notice {
+      border: 1px solid rgba(37,99,235,.18);
+      border-radius: 18px;
+      background: rgba(37,99,235,.07);
+      padding: 13px;
+      color: var(--muted, #64748b);
+      line-height: 1.45;
+    }
+
+    .tier-notice strong {
+      color: var(--ink, #111827);
+    }
+
+    .tier-board {
+      display: grid;
+      gap: 10px;
+    }
+
+    .tier-row {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr);
+      min-height: 116px;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      background: rgba(255,255,255,.72);
+    }
+
+    .tier-label {
+      display: grid;
+      place-items: center;
+      color: white;
+      font-family: Georgia, serif;
+      font-size: 2rem;
+      font-weight: 950;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .tier-label.s { background: #166534; }
+    .tier-label.a { background: #2563eb; }
+    .tier-label.b { background: #0f766e; }
+    .tier-label.c { background: #ca8a04; }
+    .tier-label.d { background: #ea580c; }
+    .tier-label.f { background: #991b1b; }
+    .tier-label.unranked { background: #475569; font-size: 1rem; }
+
+    .tier-dropzone {
+      min-width: 0;
+      min-height: 116px;
       padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 10px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.64)),
+        #fff;
+    }
+
+    .tier-dropzone.is-over {
+      outline: 3px solid rgba(37,99,235,.30);
+      outline-offset: -5px;
+      background: rgba(239,246,255,.95);
+    }
+
+    .president-token {
+      width: 104px;
+      border: 1px solid rgba(15,23,42,.14);
       border-radius: 14px;
-      border: 1px solid var(--border);
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 10px 22px rgba(15,23,42,.10);
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .president-token:active {
+      cursor: grabbing;
+    }
+
+    .president-token img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      display: block;
+      background: #e5e7eb;
+    }
+
+    .president-token-info {
+      padding: 7px;
+    }
+
+    .president-token strong {
+      display: block;
+      color: var(--ink, #111827);
+      font-size: .74rem;
+      line-height: 1.05;
+    }
+
+    .president-token span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted, #64748b);
+      font-size: .64rem;
+      font-weight: 850;
+    }
+
+    .tier-empty {
+      color: var(--muted, #64748b);
+      font-size: .86rem;
+      font-weight: 850;
+      padding: 12px;
+    }
+
+    .tier-share-box {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 14px;
+      padding: 10px;
+      font: inherit;
+      background: white;
+      color: var(--ink, #111827);
+      margin-top: 10px;
+      display: none;
+    }
+
+    .tier-share-box.is-visible {
+      display: block;
+    }
+
+    .tier-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tier-stat {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 14px;
+      padding: 10px;
       background: rgba(255,255,255,.72);
     }
 
     .tier-stat strong {
       display: block;
-      font-size: 1.2rem;
+      color: var(--ink, #111827);
+      font-size: 1.25rem;
       line-height: 1;
-      color: var(--ink);
     }
 
     .tier-stat span {
       display: block;
       margin-top: 4px;
-      color: var(--muted);
-      font-size: .7rem;
+      color: var(--muted, #64748b);
+      font-size: .68rem;
       font-weight: 850;
       text-transform: uppercase;
       letter-spacing: .06em;
     }
 
-    .featured-president {
-      overflow: hidden;
-      background:
-        linear-gradient(135deg, rgba(7,17,31,.98), rgba(13,28,51,.94)),
-        var(--navy-950);
-      color: white;
-    }
-
-    .featured-president-inner {
-      padding: 16px;
-    }
-
-    .featured-president .eyebrow {
-      color: #93c5fd;
-    }
-
-    .featured-president h3 {
-      margin: 6px 0 8px;
-      color: white;
-      font-family: Georgia, serif;
-      font-size: 1.35rem;
-      line-height: 1.05;
-    }
-
-    .featured-president p {
-      color: #d8e4f6;
-      margin: 0;
-      line-height: 1.45;
-    }
-
-    .tier-main {
-      min-width: 0;
-      display: grid;
-      gap: 14px;
-    }
-
-    .tier-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 14px;
-      border-radius: var(--radius-lg);
-      background: rgba(255,255,255,.78);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-soft);
-    }
-
-    .tier-toolbar-left {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .tier-chip {
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: white;
-      color: var(--navy-900);
-      padding: 8px 11px;
-      font-size: .78rem;
-      font-weight: 950;
-      cursor: pointer;
-    }
-
-    .tier-chip.is-active {
-      background: var(--navy-900);
-      color: white;
-      border-color: var(--navy-900);
-    }
-
-    .tier-board {
-      display: grid;
-      gap: 12px;
-    }
-
-    .tier-row {
-      overflow: hidden;
-      display: grid;
-      grid-template-columns: 108px minmax(0, 1fr);
-      min-height: 112px;
-    }
-
-    .tier-label {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 14px;
-      color: white;
-      font-family: Georgia, serif;
-      font-size: 2.1rem;
-      font-weight: 950;
-      text-align: center;
-    }
-
-    .tier-label.s { background: linear-gradient(135deg, #14532d, #16a34a); }
-    .tier-label.a { background: linear-gradient(135deg, #1d4ed8, #2563eb); }
-    .tier-label.b { background: linear-gradient(135deg, #4338ca, #7c3aed); }
-    .tier-label.c { background: linear-gradient(135deg, #92400e, #d97706); }
-    .tier-label.d { background: linear-gradient(135deg, #991b1b, #dc2626); }
-    .tier-label.f { background: linear-gradient(135deg, #111827, #4b5563); }
-    .tier-label.unranked { background: linear-gradient(135deg, #475569, #64748b); }
-
-    .tier-content {
-      padding: 14px;
-      min-width: 0;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-      gap: 10px;
-      align-content: start;
-      background: rgba(255,255,255,.72);
-    }
-
-    .president-card {
-      display: grid;
-      grid-template-columns: 58px minmax(0, 1fr);
-      gap: 10px;
-      padding: 10px;
-      box-shadow: none;
-      cursor: pointer;
-      transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
-    }
-
-    .president-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(37,99,235,.32);
-      box-shadow: 0 14px 30px rgba(7,17,31,.12);
-    }
-
-    .president-card img {
-      width: 58px;
-      height: 58px;
-      border-radius: 14px;
-      object-fit: cover;
-      background: #e5e7eb;
-      border: 1px solid var(--border);
-    }
-
-    .president-card-body {
-      min-width: 0;
-    }
-
-    .president-card-body h4 {
-      margin: 0;
-      font-family: Georgia, serif;
-      font-size: 1rem;
-      line-height: 1.05;
-      color: var(--ink);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .president-card-body p {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: .75rem;
-      font-weight: 750;
-      line-height: 1.35;
-    }
-
-    .president-meta-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-top: 7px;
-    }
-
-    .party-pill,
-    .score-pill,
-    .term-pill {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 4px 7px;
-      font-size: .64rem;
-      font-weight: 950;
-      border: 1px solid var(--border);
-      background: white;
-      color: var(--navy-900);
-    }
-
-    .score-pill {
-      background: rgba(37,99,235,.1);
-      color: #1d4ed8;
-      border-color: rgba(37,99,235,.18);
-    }
-
-    .tier-detail {
-      padding: 16px;
-    }
-
-    .tier-detail h3 {
-      margin: 0;
-      font-family: Georgia, serif;
-      font-size: 1.35rem;
-    }
-
-    .tier-detail p {
-      color: var(--muted);
-      line-height: 1.45;
-    }
-
-    .tier-detail-grid {
-      display: grid;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .tier-detail-row {
-      display: grid;
-      grid-template-columns: 105px 1fr;
-      gap: 8px;
-      font-size: .9rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 7px;
-    }
-
-    .tier-detail-row strong {
-      color: var(--ink);
-    }
-
-    .tier-empty {
-      padding: 18px;
-      text-align: center;
-      color: var(--muted);
-      border: 1px dashed var(--border);
-      border-radius: var(--radius-lg);
-      background: rgba(255,255,255,.6);
-    }
-
     @media (max-width: 1050px) {
-      .tier-dashboard {
+      .tier-layout {
         grid-template-columns: 1fr;
       }
 
       .tier-sidebar {
         position: static;
-        grid-template-columns: 1fr 1fr;
       }
     }
 
     @media (max-width: 760px) {
-      .tier-sidebar {
-        grid-template-columns: 1fr;
+      .archive-home-return {
+        width: 100%;
+      }
+
+      .hero-actions .btn,
+      .tier-page-links .btn {
+        width: 100%;
+        justify-content: center;
       }
 
       .tier-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: 60px minmax(0, 1fr);
       }
 
       .tier-label {
-        min-height: 58px;
+        font-size: 1.45rem;
       }
 
-      .tier-content {
-        grid-template-columns: 1fr;
+      .tier-label.unranked {
+        font-size: .72rem;
+        writing-mode: vertical-rl;
+      }
+
+      .president-token {
+        width: 88px;
       }
     }
   </style>
@@ -406,119 +354,145 @@
     <section class="archive-hero compact tier-hero">
       <div class="hero-content">
         <div>
-          <div class="hero-kicker">Presidential Ranking Archive</div>
+          <a class="archive-home-return" href="./index.html">← Archive Home</a>
+
+          <div class="hero-kicker">Historical Ranking Tool</div>
           <h1 class="hero-title">President Tier List</h1>
           <p class="hero-subtitle">
-            Interactive APRP ranking board for presidents, terms, parties, accomplishments,
-            scandals, crises, and historical legacy.
+            Drag APRP presidents into S–F tiers. This is a player-side local tool:
+            changes save in your browser and do not alter official archive records.
           </p>
 
           <div class="hero-actions">
-            <a class="btn btn-blue" href="#tier-board">View Tiers</a>
+            <a class="btn btn-blue" href="#tier-board">Open Tier Board</a>
             <a class="btn btn-outline" href="./hall-of-presidents.html">Hall of Presidents</a>
-            <a class="btn btn-outline" href="./timeline.html">Timeline</a>
+            <a class="btn btn-outline" href="./elections.html">Elections</a>
+          </div>
+
+          <div class="tier-page-links">
+            <a class="btn btn-small btn-outline" href="./government.html">Government</a>
+            <a class="btn btn-small btn-outline" href="./economy.html">Economy</a>
+            <a class="btn btn-small btn-outline" href="./timeline.html">Timeline</a>
+            <a class="btn btn-small btn-outline" href="./election-calculator.html">Election Calculator</a>
+            <a class="btn btn-small btn-red" href="./live-results.html">Live Results</a>
           </div>
         </div>
 
         <aside class="hero-side-card">
-          <div class="eyebrow">Current View</div>
-          <h2 id="tier-filter-title">All Presidents</h2>
-          <p id="tier-filter-summary">Loading presidential ranking data...</p>
+          <div class="eyebrow">Local Save</div>
+          <h2>Browser Ranking</h2>
+          <p>Your tier list is saved locally on your device. Use export/import to share or move it.</p>
         </aside>
       </div>
     </section>
 
     <main id="main">
       <section class="section section-tight">
-        <div class="container-wide">
-          <div class="tier-dashboard">
-            <aside class="tier-sidebar">
-              <section class="tier-card">
-                <h3>Filter Rankings</h3>
+        <div class="container-wide tier-layout">
+          <aside class="tier-sidebar">
+            <section class="tier-card">
+              <div class="eyebrow">Controls</div>
+              <h3>Tier List Options</h3>
+              <p>
+                Drag president cards between rows. Click a card to open the Hall of Presidents profile page.
+              </p>
 
-                <div class="tier-field">
-                  <label for="tier-search">Search</label>
-                  <input id="tier-search" type="search" placeholder="Search name, party, summary..." />
-                </div>
-
-                <div class="tier-field">
-                  <label for="tier-party-filter">Party</label>
-                  <select id="tier-party-filter">
-                    <option value="all">All Parties</option>
-                  </select>
-                </div>
-
-                <div class="tier-field">
-                  <label for="tier-rank-filter">Tier</label>
-                  <select id="tier-rank-filter">
-                    <option value="all">All Tiers</option>
-                    <option value="S">S Tier</option>
-                    <option value="A">A Tier</option>
-                    <option value="B">B Tier</option>
-                    <option value="C">C Tier</option>
-                    <option value="D">D Tier</option>
-                    <option value="F">F Tier</option>
-                    <option value="Unranked">Unranked</option>
-                  </select>
-                </div>
-
-                <div class="tier-field">
-                  <label for="tier-sort-filter">Sort</label>
-                  <select id="tier-sort-filter">
-                    <option value="tier">Tier Order</option>
-                    <option value="score-desc">Score High → Low</option>
-                    <option value="score-asc">Score Low → High</option>
-                    <option value="number">President Number</option>
-                    <option value="name">Name</option>
-                  </select>
-                </div>
-
-                <div class="tier-stat-grid">
-                  <div class="tier-stat">
-                    <strong id="tier-total-count">0</strong>
-                    <span>Presidents</span>
-                  </div>
-
-                  <div class="tier-stat">
-                    <strong id="tier-ranked-count">0</strong>
-                    <span>Ranked</span>
-                  </div>
-                </div>
-              </section>
-
-              <section class="tier-card featured-president">
-                <div class="featured-president-inner">
-                  <div class="eyebrow">Top Rated</div>
-                  <h3 id="featured-president-title">Loading...</h3>
-                  <p id="featured-president-summary">Loading top-rated president from public records.</p>
-                </div>
-              </section>
-
-              <section class="tier-card tier-detail" id="president-tier-detail">
-                <div class="eyebrow">Selected President</div>
-                <h3>Choose a president</h3>
-                <p>Click a president card to preview their tier, score, party, term, and legacy summary.</p>
-              </section>
-            </aside>
-
-            <section class="tier-main">
-              <div class="tier-toolbar">
-                <div class="tier-toolbar-left">
-                  <button class="tier-chip is-active" type="button" data-tier-quick="all">All</button>
-                  <button class="tier-chip" type="button" data-tier-quick="top">Top Tier</button>
-                  <button class="tier-chip" type="button" data-tier-quick="mid">Middle</button>
-                  <button class="tier-chip" type="button" data-tier-quick="low">Low</button>
-                  <button class="tier-chip" type="button" data-tier-quick="unranked">Unranked</button>
-                </div>
-
-                <a class="tier-chip" href="./hall-of-presidents.html">Open Hall</a>
+              <div class="tier-actions">
+                <button type="button" class="primary" id="tier-save-button">Save Local</button>
+                <button type="button" id="tier-export-button">Export JSON</button>
+                <button type="button" id="tier-import-button">Import JSON</button>
+                <button type="button" id="tier-official-button">Reset to Official</button>
+                <button type="button" class="danger" id="tier-clear-button">Clear Local</button>
+                <a href="./hall-of-presidents.html">Open Hall of Presidents</a>
               </div>
 
-              <div id="tier-board" class="tier-board">
-                <div class="tier-empty">Loading president tier records...</div>
+              <textarea
+                id="tier-share-box"
+                class="tier-share-box"
+                placeholder="Exported tier list JSON appears here."
+              ></textarea>
+            </section>
+
+            <section class="tier-card">
+              <div class="eyebrow">Stats</div>
+              <h3>Ranking Summary</h3>
+
+              <div class="tier-stats">
+                <div class="tier-stat">
+                  <strong id="tier-total-presidents">0</strong>
+                  <span>Presidents</span>
+                </div>
+                <div class="tier-stat">
+                  <strong id="tier-ranked-count">0</strong>
+                  <span>Ranked</span>
+                </div>
               </div>
             </section>
-          </div>
+
+            <section class="tier-card">
+              <div class="eyebrow">Archive Navigation</div>
+              <h3>Public Records</h3>
+              <div class="tier-actions">
+                <a href="./index.html">Archive Home</a>
+                <a href="./government.html">Government</a>
+                <a href="./timeline.html">Timeline</a>
+                <a href="./elections.html">Hall of Elections</a>
+                <a href="./live-results.html">Live Results</a>
+              </div>
+            </section>
+          </aside>
+
+          <section class="tier-main">
+            <div class="tier-notice">
+              <strong>Official/Local Mode:</strong>
+              If <code>WEB_POTUS</code> includes a <code>tier</code> column, the board can load official rankings.
+              Otherwise every president starts in Unranked.
+            </div>
+
+            <section class="tier-board-card" id="tier-board">
+              <div class="eyebrow">S–F Ranking</div>
+              <h2>Presidential Tier Board</h2>
+
+              <div class="tier-board" id="tier-board-root">
+                <div class="tier-row" data-tier="S">
+                  <div class="tier-label s">S</div>
+                  <div class="tier-dropzone" data-tier-dropzone="S">
+                    <div class="tier-empty">Loading presidents...</div>
+                  </div>
+                </div>
+
+                <div class="tier-row" data-tier="A">
+                  <div class="tier-label a">A</div>
+                  <div class="tier-dropzone" data-tier-dropzone="A"></div>
+                </div>
+
+                <div class="tier-row" data-tier="B">
+                  <div class="tier-label b">B</div>
+                  <div class="tier-dropzone" data-tier-dropzone="B"></div>
+                </div>
+
+                <div class="tier-row" data-tier="C">
+                  <div class="tier-label c">C</div>
+                  <div class="tier-dropzone" data-tier-dropzone="C"></div>
+                </div>
+
+                <div class="tier-row" data-tier="D">
+                  <div class="tier-label d">D</div>
+                  <div class="tier-dropzone" data-tier-dropzone="D"></div>
+                </div>
+
+                <div class="tier-row" data-tier="F">
+                  <div class="tier-label f">F</div>
+                  <div class="tier-dropzone" data-tier-dropzone="F"></div>
+                </div>
+
+                <div class="tier-row" data-tier="Unranked">
+                  <div class="tier-label unranked">Unranked</div>
+                  <div class="tier-dropzone" data-tier-dropzone="Unranked"></div>
+                </div>
+              </div>
+            </section>
+          </section>
         </div>
       </section>
     </main>
@@ -527,9 +501,9 @@
       <div class="footer-inner">
         <div>
           <strong>APRP Federal Archives</strong>
-          <div class="text-small">President tier list generated from public APRP presidential records.</div>
+          <div class="text-small">President tier list generated from public presidential records and local browser data.</div>
         </div>
-        <div class="text-small">Office of Records & Historical Preservation</div>
+        <div class="text-small">Historical Ranking Tool</div>
       </div>
     </footer>
 
@@ -538,6 +512,6 @@
 
   <script src="./assets/js/sheets.js"></script>
   <script src="./assets/js/shared.js"></script>
-  <script src="./assets/js/tierlist.js"></script>
+  <script src="./assets/js/president-tierlist.js"></script>
 </body>
 </html>
