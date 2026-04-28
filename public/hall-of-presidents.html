@@ -3,611 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>Hall of Presidents | APRP Federal Archives</title>
-
-  <link rel="stylesheet" href="./assets/css/app.css" />
-
-  <style>
-    .presidents-page {
-      background:
-        radial-gradient(circle at top left, rgba(37,99,235,.13), transparent 30%),
-        radial-gradient(circle at top right, rgba(185,28,28,.10), transparent 34%),
-        var(--paper, #f4efe6);
-    }
-
-    .presidents-hero {
-      padding-top: 74px;
-      padding-bottom: 24px;
-    }
-
-    .presidents-layout {
-      display: grid;
-      grid-template-columns: 320px minmax(0, 1fr);
-      gap: 18px;
-      align-items: start;
-    }
-
-    .presidents-sidebar {
-      position: sticky;
-      top: 86px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .presidents-card,
-    .president-record,
-    .selected-president-card {
-      border: 1px solid var(--border, rgba(15,23,42,.12));
-      border-radius: var(--radius-lg, 22px);
-      background: rgba(255,255,255,.86);
-      box-shadow: var(--shadow-soft, 0 18px 45px rgba(15,23,42,.08));
-    }
-
-    .presidents-card {
-      padding: 16px;
-    }
-
-    .presidents-card h3 {
-      margin: 0 0 10px;
-      font-family: Georgia, serif;
-      font-size: 1.15rem;
-    }
-
-    .presidents-field {
-      display: grid;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
-    .presidents-field label {
-      font-size: .72rem;
-      font-weight: 950;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--blue, #2563eb);
-    }
-
-    .presidents-field input,
-    .presidents-field select {
-      width: 100%;
-      border: 1px solid var(--border, rgba(15,23,42,.12));
-      border-radius: 12px;
-      padding: 10px 11px;
-      font: inherit;
-      background: white;
-      color: var(--ink, #111827);
-      outline: none;
-    }
-
-    .presidents-stat-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .presidents-stat {
-      padding: 10px;
-      border-radius: 14px;
-      border: 1px solid var(--border, rgba(15,23,42,.12));
-      background: rgba(255,255,255,.72);
-    }
-
-    .presidents-stat strong {
-      display: block;
-      font-size: 1.25rem;
-      line-height: 1;
-      color: var(--ink, #111827);
-    }
-
-    .presidents-stat span {
-      display: block;
-      margin-top: 4px;
-      color: var(--muted, #64748b);
-      font-size: .7rem;
-      font-weight: 850;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-    }
-
-    .selected-president-card {
-      overflow: hidden;
-      background:
-        linear-gradient(135deg, rgba(7,17,31,.98), rgba(13,28,51,.96)),
-        #07111f;
-      color: white;
-    }
-
-    .selected-president-card-inner {
-      padding: 16px;
-    }
-
-    .selected-president-card .eyebrow {
-      color: #93c5fd;
-    }
-
-    .selected-president-card h3 {
-      margin: 6px 0 8px;
-      color: white;
-      font-family: Georgia, serif;
-      font-size: 1.35rem;
-      line-height: 1.05;
-    }
-
-    .selected-president-card p {
-      color: #d8e4f6;
-      margin: 0;
-      line-height: 1.45;
-    }
-
-    .selected-detail-grid {
-      display: grid;
-      gap: 7px;
-      margin-top: 12px;
-      font-size: .84rem;
-    }
-
-    .selected-detail-row {
-      display: grid;
-      grid-template-columns: 105px minmax(0,1fr);
-      gap: 7px;
-      padding-bottom: 7px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-
-    .selected-detail-row strong {
-      color: #fff;
-    }
-
-    .selected-detail-row span {
-      color: #d8e4f6;
-    }
-
-    .presidents-main {
-      min-width: 0;
-      display: grid;
-      gap: 14px;
-    }
-
-    .presidents-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 14px;
-      border-radius: var(--radius-lg, 22px);
-      background: rgba(255,255,255,.78);
-      border: 1px solid var(--border, rgba(15,23,42,.12));
-      box-shadow: var(--shadow-soft, 0 18px 45px rgba(15,23,42,.08));
-    }
-
-    .presidents-toolbar-left {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .presidents-chip {
-      border: 1px solid var(--border, rgba(15,23,42,.12));
-      border-radius: 999px;
-      background: white;
-      color: var(--navy-900, #07111f);
-      padding: 8px 11px;
-      font-size: .78rem;
-      font-weight: 950;
-      cursor: pointer;
-      text-decoration: none;
-    }
-
-    .presidents-chip.is-active {
-      background: var(--navy-900, #07111f);
-      color: white;
-      border-color: var(--navy-900, #07111f);
-    }
-
-    .presidents-list {
-      display: grid;
-      gap: 16px;
-    }
-
-    .president-record {
-      overflow: hidden;
-      display: grid;
-      grid-template-columns: 280px minmax(0, 1fr);
-      transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
-    }
-
-    .president-record:hover {
-      transform: translateY(-2px);
-      border-color: rgba(37,99,235,.32);
-      box-shadow: 0 18px 46px rgba(7,17,31,.12);
-    }
-
-    .president-portrait-panel {
-      position: relative;
-      min-height: 360px;
-      background:
-        linear-gradient(180deg, rgba(7,17,31,.15), rgba(7,17,31,.75)),
-        #d8dee8;
-      overflow: hidden;
-    }
-
-    .president-portrait-panel img {
-      width: 100%;
-      height: 100%;
-      min-height: 360px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .president-number-badge {
-      position: absolute;
-      left: 14px;
-      top: 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 42px;
-      height: 42px;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: rgba(7,17,31,.88);
-      color: white;
-      border: 1px solid rgba(255,255,255,.18);
-      font-weight: 1000;
-    }
-
-    .president-party-band {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      padding: 14px;
-      color: white;
-      background: linear-gradient(180deg, transparent, rgba(7,17,31,.92));
-    }
-
-    .president-party-band strong {
-      display: block;
-      font-size: .74rem;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-    }
-
-    .president-party-band span {
-      display: inline-flex;
-      margin-top: 6px;
-      border-radius: 999px;
-      padding: 5px 8px;
-      font-size: .72rem;
-      font-weight: 950;
-      background: rgba(255,255,255,.14);
-      border: 1px solid rgba(255,255,255,.16);
-    }
-
-    .president-info-panel {
-      padding: 18px;
-      display: grid;
-      gap: 14px;
-      min-width: 0;
-    }
-
-    .president-kicker {
-      color: var(--blue, #2563eb);
-      font-size: .72rem;
-      font-weight: 950;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-    }
-
-    .president-info-panel h2 {
-      margin: 0;
-      font-family: Georgia, serif;
-      font-size: clamp(2rem, 4vw, 3.35rem);
-      line-height: .94;
-      color: var(--ink, #111827);
-    }
-
-    .president-tagline {
-      margin: 0;
-      color: var(--muted, #64748b);
-      font-size: 1.02rem;
-      line-height: 1.45;
-    }
-
-    .president-info-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .president-info-tile {
-      padding: 10px;
-      border-radius: 14px;
-      border: 1px solid var(--border, rgba(15,23,42,.12));
-      background: rgba(255,255,255,.75);
-    }
-
-    .president-info-tile strong {
-      display: block;
-      color: var(--blue, #2563eb);
-      font-size: .64rem;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      font-weight: 950;
-    }
-
-    .president-info-tile span {
-      display: block;
-      margin-top: 5px;
-      color: var(--ink, #111827);
-      font-weight: 850;
-      font-size: .86rem;
-      line-height: 1.25;
-    }
-
-    .president-summary-box {
-      border-radius: 16px;
-      padding: 13px;
-      background:
-        linear-gradient(135deg, rgba(7,17,31,.96), rgba(13,28,51,.92)),
-        #07111f;
-      color: white;
-    }
-
-    .president-summary-box strong {
-      display: block;
-      color: #93c5fd;
-      font-size: .7rem;
-      letter-spacing: .13em;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-
-    .president-summary-box p {
-      margin: 0;
-      color: #dbeafe;
-      line-height: 1.48;
-    }
-
-    .president-lists {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .president-list-box {
-      border-radius: 16px;
-      padding: 12px;
-      border: 1px solid var(--border, rgba(15,23,42,.12));
-      background: rgba(255,255,255,.72);
-    }
-
-    .president-list-box h4 {
-      margin: 0 0 8px;
-      font-family: Georgia, serif;
-      font-size: 1rem;
-    }
-
-    .president-list-box ul {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted, #64748b);
-      line-height: 1.45;
-      font-size: .9rem;
-    }
-
-    .president-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .president-actions a,
-    .president-actions button {
-      border: 1px solid var(--border, rgba(15,23,42,.12));
-      border-radius: 999px;
-      padding: 8px 11px;
-      background: white;
-      color: var(--navy-900, #07111f);
-      text-decoration: none;
-      font-size: .78rem;
-      font-weight: 950;
-      cursor: pointer;
-    }
-
-    .president-actions button {
-      background: var(--navy-900, #07111f);
-      color: white;
-      border-color: var(--navy-900, #07111f);
-    }
-
-    .presidents-empty {
-      padding: 20px;
-      text-align: center;
-      color: var(--muted, #64748b);
-      border: 1px dashed var(--border, rgba(15,23,42,.12));
-      border-radius: var(--radius-lg, 22px);
-      background: rgba(255,255,255,.6);
-    }
-
-    @media (max-width: 1120px) {
-      .presidents-layout {
-        grid-template-columns: 1fr;
-      }
-
-      .presidents-sidebar {
-        position: static;
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    @media (max-width: 860px) {
-      .presidents-sidebar {
-        grid-template-columns: 1fr;
-      }
-
-      .president-record {
-        grid-template-columns: 1fr;
-      }
-
-      .president-portrait-panel,
-      .president-portrait-panel img {
-        min-height: 260px;
-        max-height: 320px;
-      }
-
-      .president-info-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .president-lists {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="assets/css/app.css" />
 </head>
+<body>
+  <header class="page-header">
+    <nav class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-seal">A</span>
+        <span>
+          <span class="brand-kicker">APRP Archives</span>
+          <strong>Office of Records</strong>
+        </span>
+      </a>
 
-<body class="presidents-page">
-  <a class="skip-link" href="#main">Skip to main content</a>
-
-  <div class="page-shell compact-page">
-    <header class="site-header" data-collapsing-header>
-      <div class="header-inner">
-        <a class="brand" href="./index.html" aria-label="APRP Federal Archives home">
-          <span class="brand-mark">A</span>
-          <span class="brand-text">
-            <span class="brand-kicker">APRP Archives</span>
-            <span class="brand-title">Hall of Presidents</span>
-          </span>
-        </a>
-
-        <nav class="primary-nav" data-aprp-nav aria-label="Primary navigation"></nav>
+      <div class="desktop-nav">
+        <a href="index.html">Home</a>
+        <a href="government.html">Government</a>
+        <a href="economy.html">Economy</a>
+        <a href="timeline.html">Timeline</a>
+        <a href="elections.html">Elections</a>
+        <a class="nav-live" href="live-results.html">Live Results</a>
       </div>
-    </header>
+    </nav>
+  </header>
 
-    <section class="archive-hero compact presidents-hero">
-      <div class="hero-content">
-        <div>
-          <div class="hero-kicker">Executive Record</div>
-          <h1 class="hero-title">Hall of Presidents</h1>
-          <p class="hero-subtitle">
-            Complete APRP presidential archive with presidents, vice presidents, parties,
-            terms, first ladies, previous offices, actions, crises, scandals, and legacy summaries.
-          </p>
+  <main class="page-shell">
+    <a class="back-home-btn" href="index.html">← Archive Home</a>
 
-          <div class="hero-actions">
-            <a class="btn btn-blue" href="#presidents-list">View Presidents</a>
-            <a class="btn btn-outline" href="./president-tierlist.html">Tier List</a>
-            <a class="btn btn-outline" href="./timeline.html">Timeline</a>
-          </div>
-        </div>
+    <section class="section-card">
+      <p class="eyebrow blue">Presidential Library</p>
+      <h1>Hall of Presidents</h1>
+      <p>Administration profiles, presidents, vice presidents, first ladies, summaries, crises, and actions.</p>
 
-        <aside class="hero-side-card">
-          <div class="eyebrow">Current View</div>
-          <h2 id="presidents-filter-title">All Presidents</h2>
-          <p id="presidents-filter-summary">Loading presidential archive records...</p>
-        </aside>
+      <div class="page-link-grid">
+        <a href="government.html">Government</a>
+        <a href="timeline.html">Timeline</a>
+        <a href="elections.html">Hall of Elections</a>
+        <a href="election-calculator.html">Election Calculator</a>
       </div>
     </section>
 
-    <main id="main">
-      <section class="section section-tight">
-        <div class="container-wide">
-          <div class="presidents-layout">
-            <aside class="presidents-sidebar">
-              <section class="presidents-card">
-                <h3>Filter Hall</h3>
-
-                <div class="presidents-field">
-                  <label for="presidents-search">Search</label>
-                  <input id="presidents-search" type="search" placeholder="Search president, VP, party, crisis..." />
-                </div>
-
-                <div class="presidents-field">
-                  <label for="presidents-party-filter">Party</label>
-                  <select id="presidents-party-filter">
-                    <option value="all">All Parties</option>
-                  </select>
-                </div>
-
-                <div class="presidents-field">
-                  <label for="presidents-year-filter">Year</label>
-                  <select id="presidents-year-filter">
-                    <option value="all">All Years</option>
-                  </select>
-                </div>
-
-                <div class="presidents-field">
-                  <label for="presidents-sort-filter">Sort</label>
-                  <select id="presidents-sort-filter">
-                    <option value="number-desc">Newest First</option>
-                    <option value="number-asc">Oldest First</option>
-                    <option value="name">Name</option>
-                    <option value="party">Party</option>
-                  </select>
-                </div>
-
-                <div class="presidents-stat-grid">
-                  <div class="presidents-stat">
-                    <strong id="presidents-total-count">0</strong>
-                    <span>Shown</span>
-                  </div>
-                  <div class="presidents-stat">
-                    <strong id="presidents-party-count">0</strong>
-                    <span>Parties</span>
-                  </div>
-                </div>
-              </section>
-
-              <section class="selected-president-card">
-                <div class="selected-president-card-inner" id="selected-president">
-                  <div class="eyebrow">Selected President</div>
-                  <h3>Choose a president</h3>
-                  <p>Click any president record to preview their detailed archive data here.</p>
-                </div>
-              </section>
-            </aside>
-
-            <section class="presidents-main">
-              <div class="presidents-toolbar">
-                <div class="presidents-toolbar-left">
-                  <button class="presidents-chip is-active" type="button" data-president-quick="all">All</button>
-                  <button class="presidents-chip" type="button" data-president-quick="dnc">DNC</button>
-                  <button class="presidents-chip" type="button" data-president-quick="gop">GOP</button>
-                  <button class="presidents-chip" type="button" data-president-quick="crisis">Crisis Era</button>
-                  <button class="presidents-chip" type="button" data-president-quick="scandal">Scandals</button>
-                </div>
-
-                <a class="presidents-chip" href="./president-tierlist.html">Open Tier List</a>
-              </div>
-
-              <div id="presidents-list" class="presidents-list">
-                <div class="presidents-empty">Loading Hall of Presidents...</div>
-              </div>
-            </section>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <div class="footer-inner">
-        <div>
-          <strong>APRP Federal Archives</strong>
-          <div class="text-small">Hall of Presidents generated from public APRP presidential records.</div>
-        </div>
-        <div class="text-small">Office of Records & Historical Preservation</div>
+    <section class="section-card">
+      <div class="section-heading">
+        <p class="eyebrow blue">Current Administration</p>
+        <h2>President Feature</h2>
       </div>
-    </footer>
 
-    <nav class="mobile-bottom-nav" data-mobile-nav aria-label="Mobile navigation"></nav>
-  </div>
+      <div class="president-feature-placeholder">
+        President profile loads from WEB_POTUS.
+      </div>
+    </section>
+  </main>
 
-  <script src="./assets/js/sheets.js"></script>
-  <script src="./assets/js/shared.js"></script>
-  <script src="./assets/js/presidents.js"></script>
+  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+    <a href="index.html">Home</a>
+    <a href="government.html">Gov</a>
+    <a href="economy.html">Econ</a>
+    <a href="hall-of-presidents.html">Pres</a>
+    <a href="live-results.html">Live</a>
+  </nav>
 </body>
 </html>
