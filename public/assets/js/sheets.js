@@ -539,3 +539,121 @@ window.APRP = {
     rowsToObjects
   };
 })();
+(function () {
+  "use strict";
+
+  const sheetUrls = { ...window.APRP_SHEETS };
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const next = text[i + 1];
+
+      if (char === '"' && inQuotes && next === '"') {
+        cell += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === "," && !inQuotes) {
+        row.push(cell);
+        cell = "";
+      } else if ((char === "\n" || char === "\r") && !inQuotes) {
+        if (char === "\r" && next === "\n") i++;
+        row.push(cell);
+
+        if (row.some((v) => String(v).trim() !== "")) {
+          rows.push(row);
+        }
+
+        row = [];
+        cell = "";
+      } else {
+        cell += char;
+      }
+    }
+
+    row.push(cell);
+
+    if (row.some((v) => String(v).trim() !== "")) {
+      rows.push(row);
+    }
+
+    return rows;
+  }
+
+  function normalizeHeader(header) {
+    return String(header || "")
+      .trim()
+      .replace(/\s+/g, "_")
+      .replace(/[^\w]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "")
+      .toLowerCase();
+  }
+
+  function rowsToObjects(rows) {
+    if (!rows.length) return [];
+
+    const headers = rows[0].map(normalizeHeader);
+
+    return rows.slice(1).map((row) => {
+      const obj = {};
+
+      headers.forEach((header, index) => {
+        if (!header) return;
+        obj[header] = String(row[index] ?? "").trim();
+      });
+
+      return obj;
+    });
+  }
+
+  async function loadSheet(sheetName) {
+    const url = sheetUrls[sheetName];
+
+    if (!url) {
+      throw new Error(`Missing CSV URL for ${sheetName}`);
+    }
+
+    const cacheBust = url.includes("?")
+      ? `&cache=${Date.now()}`
+      : `?cache=${Date.now()}`;
+
+    const response = await fetch(url + cacheBust, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${sheetName}: HTTP ${response.status}`);
+    }
+
+    const text = await response.text();
+    return rowsToObjects(parseCSV(text));
+  }
+
+  async function loadSheets(sheetNames) {
+    const entries = await Promise.all(
+      sheetNames.map(async (sheetName) => {
+        const rows = await loadSheet(sheetName);
+        return [sheetName, rows];
+      })
+    );
+
+    return Object.fromEntries(entries);
+  }
+
+  window.APRP_SHEETS = {
+    ...sheetUrls,
+    loadSheet,
+    loadSheets,
+    parseCSV,
+    rowsToObjects
+  };
+
+  console.log("APRP sheet loader ready", window.APRP_SHEETS);
+})();
