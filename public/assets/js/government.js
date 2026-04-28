@@ -1,15 +1,77 @@
 /* APRP Federal Archive — Government Directory
-   Fixed state panel, darker compact popup, cleaner split House delegation stripes.
+   Fixed government data loading. One broken tab will no longer break whole page.
+   Keeps Mapbox token setup.
 */
 
 (function () {
-  const { fetchSheets, cleanCell, safeHTML, groupBy, showError } = window.APRP;
-  const { partyBadge, renderSplitBar, officialNotice, emptyState } = window.APRP_UI;
+  const APRP = window.APRP || {};
+  const APRP_UI = window.APRP_UI || {};
+
+  const fetchSheets = APRP.fetchSheets;
+  const cleanCell = APRP.cleanCell || ((v) => String(v ?? "").trim());
+  const safeHTML = APRP.safeHTML || ((v) =>
+    String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;")
+  );
+  const groupBy = APRP.groupBy || ((rows, key) =>
+    rows.reduce((acc, row) => {
+      const value = row[key] || "Unknown";
+      acc[value] = acc[value] || [];
+      acc[value].push(row);
+      return acc;
+    }, {})
+  );
+  const showError = APRP.showError || ((selector, msg) => {
+    const slot = document.querySelector(selector);
+    if (slot) slot.innerHTML = `<div class="notice error">${safeHTML(msg)}</div>`;
+  });
+
+  const partyBadge = APRP_UI.partyBadge || ((party) => {
+    const p = cleanCell(party || "VACANT").toUpperCase();
+    return `<span class="status-badge">${safeHTML(p)}</span>`;
+  });
+
+  const renderSplitBar = APRP_UI.renderSplitBar || ((selector, rows) => {
+    const slot = document.querySelector(selector);
+    if (!slot) return;
+    const total = rows.reduce((sum, r) => sum + Number(r.value || 0), 0);
+    if (!total) {
+      slot.innerHTML = `<p class="text-small">No records loaded.</p>`;
+      return;
+    }
+    slot.innerHTML = `
+      <div class="split-bar">
+        ${rows.map((r) => `
+          <div class="${safeHTML(r.className || "")}" style="width:${Math.max(3, (r.value / total) * 100)}%"></div>
+        `).join("")}
+      </div>
+      <p class="text-small">${rows.map((r) => `${safeHTML(r.label)} ${safeHTML(r.value)}`).join(" · ")}</p>
+    `;
+  });
+
+  const officialNotice = APRP_UI.officialNotice || ((text) => `
+    <div class="notice">${safeHTML(text)}</div>
+  `);
+
+  const emptyState = APRP_UI.emptyState || ((text) => `
+    <div class="empty-state">${safeHTML(text)}</div>
+  `);
 
   const MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN_HERE";
-  const US_STATES_GEOJSON_URL = "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json";
+  const US_STATES_GEOJSON_URL =
+    "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json";
 
-  let GOVERNMENT_DATA = { districts: [], governors: [], senate: [], leadership: [] };
+  let GOVERNMENT_DATA = {
+    districts: [],
+    governors: [],
+    senate: [],
+    leadership: [],
+  };
+
   let CURRENT_MAP_MODE = "region";
   let govMap = null;
   let loadedGeoJSON = null;
@@ -100,6 +162,12 @@
     style.textContent = `
       #government-mapbox {
         position: relative;
+        width: 100%;
+        min-height: 520px;
+        height: 60vh;
+        max-height: 720px;
+        background: #071426;
+        border-radius: 18px;
         overflow: hidden;
       }
 
@@ -108,7 +176,7 @@
         top: 16px;
         right: 16px;
         z-index: 20;
-        width: 250px;
+        width: 265px;
         max-height: calc(100% - 32px);
         overflow: auto;
         background: rgba(4, 13, 27, .96);
@@ -119,9 +187,7 @@
         backdrop-filter: blur(10px);
       }
 
-      .gov-fixed-popup.is-hidden {
-        display: none;
-      }
+      .gov-fixed-popup.is-hidden { display: none; }
 
       .gov-fixed-popup-header {
         display: flex;
@@ -197,21 +263,21 @@
         border: 1px solid rgba(255,255,255,.10);
       }
 
-      .gov-fixed-row-top {
+      .gov-fixed-row-top,
+      .gov-fixed-row-bottom {
         display: flex;
         justify-content: space-between;
         gap: 7px;
         align-items: center;
+      }
+
+      .gov-fixed-row-top {
         color: #fff;
         font-weight: 950;
         font-size: .74rem;
       }
 
       .gov-fixed-row-bottom {
-        display: flex;
-        justify-content: space-between;
-        gap: 7px;
-        align-items: center;
         color: #cbd5e1;
         font-weight: 750;
         font-size: .74rem;
@@ -239,17 +305,12 @@
         border: 1px solid rgba(255,255,255,.10);
       }
 
-      .gov-mini-row strong {
-        color: inherit;
-        font-size: .82rem;
-      }
-
-      .gov-mini-row span {
-        color: inherit;
-        font-size: .84rem;
-      }
-
       @media (max-width: 850px) {
+        #government-mapbox {
+          min-height: 420px;
+          height: 58vh;
+        }
+
         .gov-fixed-popup {
           left: 12px;
           right: 12px;
@@ -328,7 +389,9 @@
   }
 
   function getDistrictsForState(stateAbbr) {
-    return GOVERNMENT_DATA.districts.filter((district) => districtMatchesState(district, stateAbbr));
+    return GOVERNMENT_DATA.districts.filter((district) =>
+      districtMatchesState(district, stateAbbr)
+    );
   }
 
   function getRegionForState(stateAbbr) {
@@ -370,7 +433,14 @@
   }
 
   function getSenatorClass(row) {
-    const raw = row?.class || row?.senate_class || row?.senator_class || row?.seat_class || row?.class_number || row?.seat || "";
+    const raw =
+      row?.class ||
+      row?.senate_class ||
+      row?.senator_class ||
+      row?.seat_class ||
+      row?.class_number ||
+      row?.seat ||
+      "";
     const value = cleanCell(raw).replace(/class/i, "").trim();
 
     if (["1", "2", "3"].includes(value)) return `Class ${value}`;
@@ -445,8 +515,8 @@
     districts.forEach((district) => add(district.party, 0.5));
 
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-    const leader = sorted[0];
-    const runnerUp = sorted[1];
+    const leader = sorted[0] || ["OTHER", 0];
+    const runnerUp = sorted[1] || ["OTHER", 0];
     const margin = leader[1] - runnerUp[1];
 
     let rating = "Mixed";
@@ -496,24 +566,11 @@
       return senateParty === "SPLIT" ? PARTY_COLORS.SPLIT : partyColor(senateParty);
     }
 
-    if (CURRENT_MAP_MODE === "governor") return partyColor(governor?.party || "VACANT");
+    if (CURRENT_MAP_MODE === "governor") {
+      return partyColor(governor?.party || "VACANT");
+    }
+
     return REGION_COLORS.unknown;
-  }
-
-  function mapPatternId(stateAbbr) {
-    if (CURRENT_MAP_MODE !== "district") return "";
-
-    const counts = houseDelegationCounts(stateAbbr);
-    const active = [
-      counts.DNC > 0 ? "DNC" : "",
-      counts.GOP > 0 ? "GOP" : "",
-      counts.IND > 0 ? "IND" : "",
-      counts.OTHER > 0 ? "OTHER" : "",
-      counts.VACANT > 0 ? "VACANT" : "",
-    ].filter(Boolean);
-
-    if (active.length <= 1) return "";
-    return `pattern-${stateAbbr}`;
   }
 
   function modeTitle() {
@@ -530,7 +587,27 @@
     if (!slot) return;
 
     slot.innerHTML = officialNotice(
-      "Regional party strength is calculated as Governor = 4 points, each Senator = 2 points, and each Representative = 0.5 points. District mode shows split House delegations with clear proportional party blocks."
+      "Regional party strength is calculated as Governor = 4 points, each Senator = 2 points, and each Representative = 0.5 points."
+    );
+  }
+
+  function renderSheetLoadNotice() {
+    const slot = document.querySelector("#government-notice");
+    if (!slot) return;
+
+    const missing = [];
+    if (!GOVERNMENT_DATA.districts.length) missing.push("WEB_DISTRICTS");
+    if (!GOVERNMENT_DATA.governors.length) missing.push("WEB_GOV");
+    if (!GOVERNMENT_DATA.senate.length) missing.push("WEB_SEN");
+    if (!GOVERNMENT_DATA.leadership.length) missing.push("WEB_LDR");
+
+    if (!missing.length) {
+      renderNotice();
+      return;
+    }
+
+    slot.innerHTML = officialNotice(
+      `Some government tabs did not load: ${missing.join(", ")}. Check published sheet access, exact tab names, and header row names. The page still renders with available data.`
     );
   }
 
@@ -566,7 +643,8 @@
     const slotSummary = document.querySelector("#exec-summary");
 
     const president = GOVERNMENT_DATA.leadership.find((row) =>
-      cleanCell(getLeadershipTitle(row)).toLowerCase().includes("president")
+      cleanCell(getLeadershipTitle(row)).toLowerCase().includes("president") &&
+      !cleanCell(getLeadershipTitle(row)).toLowerCase().includes("vice")
     );
 
     const vp = GOVERNMENT_DATA.leadership.find((row) => {
@@ -574,13 +652,23 @@
       return title.includes("vice president") || title === "vp";
     });
 
-    if (slotTitle) slotTitle.textContent = president ? getLeadershipName(president) : "Executive Branch";
+    if (slotTitle) {
+      slotTitle.textContent = president ? getLeadershipName(president) : "Executive Branch";
+    }
 
     if (slotSummary) {
       slotSummary.innerHTML = `
-        ${president ? `${safeHTML(getLeadershipTitle(president))}: ${partyBadge(getLeadershipParty(president))}` : "No president record found."}
+        ${
+          president
+            ? `${safeHTML(getLeadershipTitle(president))}: ${partyBadge(getLeadershipParty(president))}`
+            : "No president record found."
+        }
         <br>
-        ${vp ? `Vice President: ${safeHTML(getLeadershipName(vp))} ${partyBadge(getLeadershipParty(vp))}` : ""}
+        ${
+          vp
+            ? `Vice President: ${safeHTML(getLeadershipName(vp))} ${partyBadge(getLeadershipParty(vp))}`
+            : ""
+        }
       `;
     }
   }
@@ -590,7 +678,7 @@
     if (!slot) return;
 
     if (!GOVERNMENT_DATA.leadership.length) {
-      slot.innerHTML = emptyState("No leadership records found");
+      slot.innerHTML = emptyState("No leadership records found.");
       return;
     }
 
@@ -686,9 +774,11 @@
         ${
           senators.length
             ? senators.map((senator) => `
-              <p>${safeHTML(getSenatorClass(senator))} Senator:
-              ${safeHTML(getSenatorName(senator))}
-              ${partyBadge(senator.party)}</p>
+              <p>
+                ${safeHTML(getSenatorClass(senator))}: 
+                ${safeHTML(getSenatorName(senator))}
+                ${partyBadge(senator.party)}
+              </p>
             `).join("")
             : "<p>No Senate records found.</p>"
         }
@@ -774,7 +864,7 @@
     if (!slot) return;
 
     if (!GOVERNMENT_DATA.districts.length) {
-      slot.innerHTML = emptyState("No district records found");
+      slot.innerHTML = emptyState("No district records found.");
       return;
     }
 
@@ -821,95 +911,23 @@
     return STATE_NAME_TO_ABBR[name] || "";
   }
 
-  function hexToRgba(hex, alpha = 245) {
-    const clean = String(hex || "#64748b").replace("#", "");
-    const bigint = parseInt(clean, 16);
-    return {
-      r: (bigint >> 16) & 255,
-      g: (bigint >> 8) & 255,
-      b: bigint & 255,
-      a: alpha,
-    };
-  }
-
-  function makeEmptyPattern() {
-    if (!govMap || govMap.hasImage("pattern-empty")) return;
-    govMap.addImage("pattern-empty", { width: 1, height: 1, data: new Uint8Array([0, 0, 0, 0]) }, { pixelRatio: 1 });
-  }
-
-  function makeStripePattern(patternId, counts) {
-    if (!govMap || govMap.hasImage(patternId)) return;
-
-    const segments = [];
-    const add = (party, amount) => {
-      for (let i = 0; i < amount; i += 1) segments.push(partyColor(party));
-    };
-
-    add("DNC", counts.DNC);
-    add("GOP", counts.GOP);
-    add("IND", counts.IND);
-    add("OTHER", counts.OTHER);
-    add("VACANT", counts.VACANT);
-
-    if (segments.length <= 1) return;
-
-    const size = 96;
-    const data = new Uint8Array(size * size * 4);
-
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
-        const segmentIndex = Math.min(segments.length - 1, Math.floor((x / size) * segments.length));
-        const rgba = hexToRgba(segments[segmentIndex], 245);
-        const index = (y * size + x) * 4;
-
-        data[index] = rgba.r;
-        data[index + 1] = rgba.g;
-        data[index + 2] = rgba.b;
-        data[index + 3] = rgba.a;
-
-        const stripeWidth = size / segments.length;
-        const boundaryDistance = Math.abs((x % stripeWidth) - 0);
-
-        if (boundaryDistance < 1.5 && x > 1) {
-          data[index] = 255;
-          data[index + 1] = 255;
-          data[index + 2] = 255;
-          data[index + 3] = 255;
-        }
-      }
-    }
-
-    govMap.addImage(patternId, { width: size, height: size, data }, { pixelRatio: 1 });
-  }
-
-  function ensureDistrictPatterns() {
-    if (!govMap) return;
-
-    makeEmptyPattern();
-
-    Object.keys(STATE_NAMES).forEach((stateAbbr) => {
-      const pattern = mapPatternId(stateAbbr);
-      if (!pattern) return;
-      makeStripePattern(pattern, houseDelegationCounts(stateAbbr));
-    });
-  }
-
   function enrichGeoJSON(geojson) {
     const copy = JSON.parse(JSON.stringify(geojson));
 
-    copy.features = copy.features.map((feature) => {
-      const abbr = stateAbbrFromFeature(feature);
+    copy.features = copy.features
+      .map((feature) => {
+        const abbr = stateAbbrFromFeature(feature);
 
-      return {
-        ...feature,
-        properties: {
-          ...feature.properties,
-          abbr,
-          color: baseStateColor(abbr),
-          pattern: mapPatternId(abbr),
-        },
-      };
-    }).filter((feature) => feature.properties.abbr);
+        return {
+          ...feature,
+          properties: {
+            ...feature.properties,
+            abbr,
+            color: baseStateColor(abbr),
+          },
+        };
+      })
+      .filter((feature) => feature.properties.abbr);
 
     return copy;
   }
@@ -917,23 +935,10 @@
   function updateMapColors() {
     if (!govMap || !govMap.getSource("gov-states") || !loadedGeoJSON) return;
 
-    ensureDistrictPatterns();
-
     govMap.getSource("gov-states").setData(enrichGeoJSON(loadedGeoJSON));
 
     if (govMap.getLayer("gov-states-fill")) {
       govMap.setPaintProperty("gov-states-fill", "fill-color", ["get", "color"]);
-    }
-
-    if (govMap.getLayer("gov-states-stripes")) {
-      govMap.setLayoutProperty("gov-states-stripes", "visibility", CURRENT_MAP_MODE === "district" ? "visible" : "none");
-
-      govMap.setPaintProperty("gov-states-stripes", "fill-pattern", [
-        "case",
-        ["!=", ["get", "pattern"], ""],
-        ["get", "pattern"],
-        "pattern-empty",
-      ]);
     }
   }
 
@@ -976,7 +981,7 @@
     injectGovernmentMapStyles();
 
     if (!window.mapboxgl) {
-      slot.innerHTML = emptyState("Mapbox did not load. Check internet connection.");
+      slot.innerHTML = emptyState("Mapbox did not load. Check the Mapbox script in government.html.");
       return;
     }
 
@@ -1003,9 +1008,7 @@
 
     govMap.on("load", async () => {
       try {
-        makeEmptyPattern();
         loadedGeoJSON = await loadStatesGeoJSON();
-        ensureDistrictPatterns();
 
         govMap.addSource("gov-states", {
           type: "geojson",
@@ -1023,24 +1026,6 @@
         });
 
         govMap.addLayer({
-          id: "gov-states-stripes",
-          type: "fill",
-          source: "gov-states",
-          layout: {
-            visibility: CURRENT_MAP_MODE === "district" ? "visible" : "none",
-          },
-          paint: {
-            "fill-pattern": [
-              "case",
-              ["!=", ["get", "pattern"], ""],
-              ["get", "pattern"],
-              "pattern-empty",
-            ],
-            "fill-opacity": 1,
-          },
-        });
-
-        govMap.addLayer({
           id: "gov-states-outline",
           type: "line",
           source: "gov-states",
@@ -1051,9 +1036,8 @@
         });
 
         attachStateClick("gov-states-fill");
-        attachStateClick("gov-states-stripes");
       } catch (error) {
-        console.error(error);
+        console.error("Government map data failed:", error);
         setMapFallback(slot, error.message);
       }
     });
@@ -1081,27 +1065,71 @@
     });
   }
 
+  async function loadSheetSafe(tabName) {
+    try {
+      if (typeof fetchSheets !== "function") {
+        throw new Error("fetchSheets is not available. Check sheets.js script order.");
+      }
+
+      const data = await fetchSheets([tabName]);
+      const rows = data?.[tabName];
+
+      if (!Array.isArray(rows)) {
+        console.warn(`${tabName} returned no array. Response:`, data);
+        return [];
+      }
+
+      return rows;
+    } catch (error) {
+      console.warn(`Failed loading ${tabName}:`, error);
+      return [];
+    }
+  }
+
+  async function loadGovernmentData() {
+    const [districts, governors, senate, leadership] = await Promise.all([
+      loadSheetSafe("WEB_DISTRICTS"),
+      loadSheetSafe("WEB_GOV"),
+      loadSheetSafe("WEB_SEN"),
+      loadSheetSafe("WEB_LDR"),
+    ]);
+
+    GOVERNMENT_DATA = {
+      districts,
+      governors,
+      senate,
+      leadership,
+    };
+
+    console.log("Government data loaded:", GOVERNMENT_DATA);
+  }
+
+  function renderGovernmentSections() {
+    renderSheetLoadNotice();
+    renderControlBars();
+    renderExecutiveSummary();
+    renderLeadership();
+    renderRegionDirectory();
+  }
+
   async function initGovernment() {
     try {
-      const data = await fetchSheets(["WEB_DISTRICTS", "WEB_GOV", "WEB_SEN", "WEB_LDR"]);
-
-      GOVERNMENT_DATA = {
-        districts: data.WEB_DISTRICTS || [],
-        governors: data.WEB_GOV || [],
-        senate: data.WEB_SEN || [],
-        leadership: data.WEB_LDR || [],
-      };
-
-      renderNotice();
-      renderControlBars();
-      renderExecutiveSummary();
-      renderLeadership();
-      renderRegionDirectory();
+      injectGovernmentMapStyles();
       setupMapModeButtons();
+
+      await loadGovernmentData();
+      renderGovernmentSections();
+
       await initMapboxMap();
     } catch (error) {
-      console.error(error);
+      console.error("Government page failed:", error);
       showError("#main", error.message);
+
+      try {
+        await initMapboxMap();
+      } catch (mapError) {
+        console.error("Map also failed:", mapError);
+      }
     }
   }
 
