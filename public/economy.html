@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Economy Archive | APRP Federal Archives</title>
+
+  <link rel="stylesheet" href="./assets/css/app.css" />
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="page-shell">
+    <header class="site-header" data-collapsing-header>
+      <div class="header-inner">
+        <a class="brand" href="./index.html">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">
+            <span class="brand-kicker">APRP Archives</span>
+            <span class="brand-title">Economy Archive</span>
+          </span>
+        </a>
+
+        <nav class="primary-nav" data-aprp-nav></nav>
+      </div>
+    </header>
+
+    <section class="archive-hero economy-hero">
+      <div class="hero-content">
+        <div>
+          <div class="hero-kicker">Fiscal & Economic Review</div>
+          <h1 class="hero-title">Economy Archive</h1>
+          <p class="hero-subtitle">
+            Official fiscal record of GDP, debt, deficits, growth, jobs, wages, unemployment,
+            inflation, approval, oil, and market indicators across the APRP canon.
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn btn-blue" href="#macro-dashboard">Macro Snapshot</a>
+            <a class="btn btn-outline" href="#yearly-trends">Yearly Charts</a>
+            <a class="btn btn-outline" href="#monthly-indicators">Monthly Charts</a>
+          </div>
+        </div>
+
+        <aside class="hero-side-card" id="economy-hero-card">
+          <div class="eyebrow">OBM Record</div>
+          <h2>Loading economy...</h2>
+          <p>Reading yearly and monthly fiscal indicators from public archive records.</p>
+        </aside>
+      </div>
+    </section>
+
+    <main id="main">
+      <section class="section section-tight" id="macro-dashboard">
+        <div class="container-wide">
+          <div id="economy-root">
+            <div class="archive-card">
+              <div class="eyebrow">Loading</div>
+              <h2>Loading Economy Archive...</h2>
+              <p>Reading WEB_ECON and WEB_MONTHLY from the archive sheet.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>APRP Federal Archives</strong>
+          <div class="text-small">Public archive for fiscal, economic, and political indicators.</div>
+        </div>
+        <div class="text-small">Economy Archive</div>
+      </div>
+    </footer>
+
+    <nav class="mobile-bottom-nav" data-mobile-nav></nav>
+  </div>
+
+  <script src="./assets/js/sheets.js"></script>
+  <script src="./assets/js/shared.js"></script>
+  <script src="./assets/js/economy.js"></script>
+</body>
+</html>

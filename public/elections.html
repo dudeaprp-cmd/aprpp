@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Election Hall | APRP Federal Archives</title>
+
+  <link rel="stylesheet" href="./assets/css/app.css" />
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="page-shell">
+    <header class="site-header" data-collapsing-header>
+      <div class="header-inner">
+        <a class="brand" href="./index.html">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">
+            <span class="brand-kicker">APRP Archives</span>
+            <span class="brand-title">Election Hall</span>
+          </span>
+        </a>
+
+        <nav class="primary-nav" data-aprp-nav></nav>
+      </div>
+    </header>
+
+    <section class="archive-hero">
+      <div class="hero-content">
+        <div>
+          <div class="hero-kicker">Election Archive</div>
+          <h1 class="hero-title">Election Hall</h1>
+          <p class="hero-subtitle">
+            Presidential, Senate, House, gubernatorial, and regional election records across the APRP canon.
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn btn-blue" href="./live-results.html">Live Results</a>
+            <a class="btn btn-outline" href="./government.html">Government</a>
+            <a class="btn btn-outline" href="./timeline.html">Timeline</a>
+          </div>
+        </div>
+
+        <aside class="hero-side-card" id="elections-hero-card">
+          <div class="eyebrow">Archive Status</div>
+          <h2>Loading elections...</h2>
+          <p>Reading public election records.</p>
+        </aside>
+      </div>
+    </section>
+
+    <main id="main">
+      <section class="section section-tight">
+        <div class="container-wide">
+          <div id="election-hall-root">
+            <div class="archive-card">
+              <div class="eyebrow">Loading</div>
+              <h2>Loading Election Hall...</h2>
+              <p>Reading election records from the archive sheet.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>APRP Federal Archives</strong>
+          <div class="text-small">Public archive for APRP elections and government records.</div>
+        </div>
+        <div class="text-small">Election Hall</div>
+      </div>
+    </footer>
+
+    <nav class="mobile-bottom-nav" data-mobile-nav></nav>
+  </div>
+
+  <script src="./assets/js/sheets.js"></script>
+  <script src="./assets/js/shared.js"></script>
+  <script src="./assets/js/elections.js"></script>
+</body>
+</html>

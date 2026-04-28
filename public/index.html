@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>APRP Federal Archives | Office of Records</title>
+
+  <link rel="stylesheet" href="./assets/css/app.css" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+
+  <style>
+    .hero-actions .btn.btn-small {
+      padding: 7px 11px !important;
+      font-size: 0.78rem !important;
+      border-radius: 999px !important;
+      min-height: 0 !important;
+    }
+
+    .home-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .home-main-stack {
+      display: grid;
+      gap: 20px;
+    }
+
+    .home-side-stack {
+      display: grid;
+      gap: 14px;
+      position: sticky;
+      top: 86px;
+    }
+
+    .home-top-cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: -42px;
+      position: relative;
+      z-index: 5;
+    }
+
+    .home-map-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 270px;
+      gap: 12px;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 24px;
+      background: linear-gradient(180deg, #13243d, #07111f);
+      box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    .home-map-detail {
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      padding: 14px;
+    }
+
+    .home-map-detail h3 {
+      color: #fff;
+      margin: 6px 0 8px;
+      font-family: Georgia, serif;
+    }
+
+    .home-map-detail p {
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+
+    .home-map-detail .btn {
+      margin-top: 8px;
+      background: #fff;
+      color: #0f172a;
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .current-admin-card {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 18px;
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    .current-admin-photo {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 20px;
+      object-fit: cover;
+      object-position: center;
+      border: 1px solid rgba(15, 23, 42, 0.14);
+      background: #e5e7eb;
+    }
+
+    .current-admin-copy {
+      display: grid;
+      align-content: center;
+      gap: 10px;
+    }
+
+    .current-admin-copy h2 {
+      margin: 0;
+      font-family: Georgia, serif;
+      color: #0f172a;
+      font-size: clamp(2rem, 4vw, 3.6rem);
+      line-height: 0.95;
+    }
+
+    .current-admin-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .current-admin-copy p {
+      margin: 0;
+      color: #475569;
+      line-height: 1.55;
+      max-width: 760px;
+    }
+
+    @media (max-width: 1150px) {
+      .home-layout,
+      .home-map-shell,
+      .current-admin-card {
+        grid-template-columns: 1fr;
+      }
+
+      .home-side-stack {
+        position: static;
+      }
+
+      .home-top-cards {
+        grid-template-columns: 1fr;
+        margin-top: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="page-shell">
+    <header class="site-header" data-collapsing-header>
+      <div class="header-inner">
+        <a class="brand" href="./index.html">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">
+            <span class="brand-kicker">APRP Archives</span>
+            <span class="brand-title">Office of Records</span>
+          </span>
+        </a>
+
+        <nav class="primary-nav" data-aprp-nav>
+          <a href="./index.html">Home</a>
+          <a href="./government.html">Government</a>
+          <a href="./economy.html">Economy</a>
+          <a href="./timeline.html">Timeline</a>
+          <a href="./hall-of-presidents.html">Presidents</a>
+          <a href="./elections.html">Elections</a>
+          <a href="./live-results.html">Live Results</a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="archive-hero home-hero">
+      <div class="hero-content">
+        <div>
+          <div class="hero-kicker">Official Archive Record</div>
+          <h1 class="hero-title">APRP Federal Archives</h1>
+          <p class="hero-subtitle">
+            Public record of government leadership, elections, administrations, economic data,
+            regional control, and major timeline events across the APRP canon.
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn btn-blue" href="./government.html">Government</a>
+            <a class="btn btn-outline" href="./economy.html">Economy</a>
+            <a class="btn btn-red" href="./live-results.html">Live Results</a>
+            <a class="btn btn-outline btn-small" href="./election-calculator.html">Election Calculator</a>
+          </div>
+        </div>
+
+        <aside class="hero-side-card" id="home-current-cycle-card">
+          <div class="eyebrow">Current Cycle</div>
+          <h2>Loading archive...</h2>
+          <p>Loading public archive records from the APRP data sheet.</p>
+        </aside>
+      </div>
+    </section>
+
+    <main id="main">
+      <section class="section section-tight">
+        <div class="container-wide">
+          <div class="home-top-cards">
+            <article class="archive-card" id="major-event-card">
+              <div class="eyebrow">Major Events</div>
+              <h3>Loading latest events...</h3>
+              <p>Reading timeline records.</p>
+            </article>
+
+            <article class="archive-card" id="macro-snapshot-card">
+              <div class="eyebrow">Macro Snapshot</div>
+              <h3>Loading economy...</h3>
+              <p>Reading yearly economic indicators.</p>
+            </article>
+
+            <article class="archive-card" id="markets-card">
+              <div class="eyebrow">Markets & Approval</div>
+              <h3>Monthly Indicators</h3>
+              <p>Reading monthly records.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-tight">
+        <div class="container-wide home-layout">
+          <div class="home-main-stack">
+            <section>
+              <div class="section-heading">
+                <div>
+                  <div class="eyebrow">Regional Map</div>
+                  <h2>APRP Regional Control</h2>
+                  <p>
+                    Click a state to view its APRP region. Open the full government map for districts,
+                    Senate control, governors, and party strength.
+                  </p>
+                </div>
+
+                <a class="btn btn-dark btn-small" href="./government.html">Full Map</a>
+              </div>
+
+              <div class="home-map-shell">
+                <div id="home-region-map"></div>
+
+                <aside class="home-map-detail" id="home-map-detail">
+                  <div class="eyebrow">Selected State</div>
+                  <h3>Choose a state</h3>
+                  <p>Click a state to view its APRP region.</p>
+                </aside>
+              </div>
+            </section>
+
+            <section>
+              <div class="section-heading">
+                <div>
+                  <div class="eyebrow">Executive Record</div>
+                  <h2>Current Administration</h2>
+                  <p>Current president, vice president, first lady, and administration summary.</p>
+                </div>
+
+                <a class="btn btn-outline btn-small" href="./hall-of-presidents.html">Hall of Presidents</a>
+              </div>
+
+              <article class="archive-card current-admin-card">
+                <img
+                  id="current-president-photo"
+                  class="current-admin-photo"
+                  src="./assets/img/president-placeholder.png"
+                  alt="Current President"
+                />
+
+                <div class="current-admin-copy">
+                  <div class="eyebrow">President</div>
+                  <h2 id="current-president-name">Loading President</h2>
+
+                  <div class="current-admin-badges">
+                    <span id="current-president-party"></span>
+                    <span id="current-president-vp"></span>
+                  </div>
+
+                  <p id="current-president-summary">
+                    Loading current administration summary from the archive sheet.
+                  </p>
+
+                  <div class="hero-actions">
+                    <a class="btn btn-dark" href="./hall-of-presidents.html">View Hall</a>
+                    <a class="btn btn-outline" href="./timeline.html">View Timeline</a>
+                  </div>
+                </div>
+              </article>
+            </section>
+          </div>
+
+          <aside class="home-side-stack">
+            <article class="archive-card">
+              <div class="eyebrow">Current Schedule</div>
+              <h3>Election Cycle Schedule</h3>
+              <div id="current-schedule-list">
+                <p>Loading schedule...</p>
+              </div>
+            </article>
+
+            <article class="archive-card">
+              <div class="eyebrow">Government Control</div>
+              <h3>Balance of Power</h3>
+              <div id="home-government-control">
+                <p>Loading government control...</p>
+              </div>
+
+              <div style="margin-top: 12px;">
+                <a class="btn btn-outline btn-small" href="./government.html">Open Government Directory</a>
+              </div>
+            </article>
+
+            <article class="archive-card">
+              <div class="eyebrow">Election Tools</div>
+              <h3>Path to Victory</h3>
+              <p class="text-small">
+                Build a custom prediction map and calculate electoral votes.
+              </p>
+
+              <div style="margin-top: 12px;">
+                <a class="btn btn-blue btn-small" href="./election-calculator.html">Open Election Calculator</a>
+              </div>
+            </article>
+
+            <article class="archive-card">
+              <div class="eyebrow">Recent Record</div>
+              <h3>Major Timeline Events</h3>
+              <div id="recent-events-list">
+                <p>Loading events...</p>
+              </div>
+
+              <div style="margin-top: 12px;">
+                <a class="btn btn-outline btn-small" href="./timeline.html">Open Timeline</a>
+              </div>
+            </article>
+
+            <article class="archive-card">
+              <div class="eyebrow">Quick Access</div>
+              <h3>Archive Pages</h3>
+
+              <div class="home-card-grid-fix">
+                <a class="btn btn-outline btn-small" href="./economy.html">Economy Archive</a>
+                <a class="btn btn-outline btn-small" href="./elections.html">Election Hall</a>
+                <a class="btn btn-outline btn-small" href="./hall-of-presidents.html">Presidents Hall</a>
+                <a class="btn btn-outline btn-small" href="./live-results.html">Live Results</a>
+              </div>
+            </article>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>APRP Federal Archives</strong>
+          <div class="text-small">Public archive for APRP government, elections, economics, and timeline records.</div>
+        </div>
+        <div class="text-small">Office of Records</div>
+      </div>
+    </footer>
+
+    <nav class="mobile-bottom-nav" data-mobile-nav></nav>
+  </div>
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <script src="./assets/js/sheets.js"></script>
+  <script src="./assets/js/shared.js"></script>
+  <script src="./assets/js/home.js"></script>
+</body>
+</html>
