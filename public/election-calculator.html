@@ -3,85 +3,67 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>Election Calculator | APRP Federal Archives</title>
-
-  <link rel="stylesheet" href="./assets/css/app.css" />
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/app.css" />
 </head>
-
 <body>
-  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="page-header">
+    <nav class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-seal">A</span>
+        <span>
+          <span class="brand-kicker">APRP Archives</span>
+          <strong>Office of Records</strong>
+        </span>
+      </a>
 
-  <div class="page-shell">
-    <header class="site-header" data-collapsing-header>
-      <div class="header-inner">
-        <a class="brand" href="./index.html">
-          <span class="brand-mark">A</span>
-          <span class="brand-text">
-            <span class="brand-kicker">APRP Archives</span>
-            <span class="brand-title">Election Calculator</span>
-          </span>
-        </a>
-
-        <nav class="primary-nav" data-aprp-nav></nav>
+      <div class="desktop-nav">
+        <a href="index.html">Home</a>
+        <a href="government.html">Government</a>
+        <a href="economy.html">Economy</a>
+        <a href="timeline.html">Timeline</a>
+        <a href="elections.html">Elections</a>
+        <a class="nav-live" href="live-results.html">Live Results</a>
       </div>
-    </header>
+    </nav>
+  </header>
 
-    <section class="archive-hero">
-      <div class="hero-content">
-        <div>
-          <div class="hero-kicker">Path to Victory</div>
-          <h1 class="hero-title">Election Calculator</h1>
-          <p class="hero-subtitle">
-            Click states to build a custom presidential prediction map, calculate electoral votes,
-            and test paths to 270.
-          </p>
+  <main class="page-shell">
+    <a class="back-home-btn" href="index.html">← Archive Home</a>
 
-          <div class="hero-actions">
-            <a class="btn btn-blue" href="./elections.html">Election Hall</a>
-            <a class="btn btn-outline" href="./live-results.html">Live Results</a>
-            <a class="btn btn-outline" href="./government.html">Government</a>
-          </div>
-        </div>
+    <section class="section-card">
+      <p class="eyebrow blue">Prediction Lab</p>
+      <h1>Electoral College Calculator</h1>
+      <p>
+        Build custom election predictions using lobbies, ideology, campaign points,
+        approval, experience, and state leans.
+      </p>
 
-        <aside class="hero-side-card" id="calculator-hero-card">
-          <div class="eyebrow">Calculator</div>
-          <h2>538 Electoral Votes</h2>
-          <p>270 electoral votes needed to win.</p>
-        </aside>
+      <div class="page-link-grid">
+        <a href="live-results.html">Live Results</a>
+        <a href="elections.html">Hall of Elections</a>
+        <a href="government.html">Government</a>
       </div>
     </section>
 
-    <main id="main">
-      <section class="section section-tight">
-        <div class="container-wide">
-          <div id="election-calculator-root">
-            <div class="archive-card">
-              <div class="eyebrow">Loading</div>
-              <h2>Loading calculator...</h2>
-              <p>Building interactive electoral map.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <div class="footer-inner">
-        <div>
-          <strong>APRP Federal Archives</strong>
-          <div class="text-small">Election calculator and path-to-victory tool.</div>
-        </div>
-        <div class="text-small">Election Calculator</div>
+    <section class="section-card">
+      <div class="section-heading">
+        <p class="eyebrow blue">Interactive Map</p>
+        <h2>Custom Prediction Map</h2>
       </div>
-    </footer>
 
-    <nav class="mobile-bottom-nav" data-mobile-nav></nav>
-  </div>
+      <div class="map-placeholder">
+        Election calculator map loads here.
+      </div>
+    </section>
+  </main>
 
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-  <script src="./assets/js/shared.js"></script>
-  <script src="./assets/js/election-calculator.js"></script>
+  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+    <a href="index.html">Home</a>
+    <a href="government.html">Gov</a>
+    <a href="economy.html">Econ</a>
+    <a href="hall-of-presidents.html">Pres</a>
+    <a href="live-results.html">Live</a>
+  </nav>
 </body>
 </html>
