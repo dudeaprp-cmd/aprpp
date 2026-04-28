@@ -17,6 +17,35 @@
       min-height: 0 !important;
     }
 
+    /* Gold button for Hall of Presidents */
+    .btn-gold {
+      background: linear-gradient(135deg, #b8860b, #d4a017);
+      color: #fff !important;
+      border-color: #b8860b;
+      font-weight: 700;
+    }
+    .btn-gold:hover {
+      background: linear-gradient(135deg, #d4a017, #f0c040);
+    }
+
+    /* Make hero buttons wrap nicely on mobile */
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .hero-actions .btn {
+        flex: 1 1 calc(50% - 10px);
+        text-align: center;
+        justify-content: center;
+      }
+      .hero-actions .btn-gold {
+        flex: 1 1 100%;
+      }
+    }
+
     .home-layout {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 330px;
@@ -187,6 +216,10 @@
             <a class="btn btn-blue" href="./government.html">Government</a>
             <a class="btn btn-outline" href="./economy.html">Economy</a>
             <a class="btn btn-red" href="./live-results.html">Live Results</a>
+            <a class="btn btn-gold" href="./hall-of-presidents.html">Hall of Presidents</a>
+            <a class="btn btn-outline" href="./elections.html">Elections</a>
+            <a class="btn btn-outline" href="./timeline.html">Timeline</a>
+            <a class="btn btn-outline" href="./president-tierlist.html">President Tier List</a>
             <a class="btn btn-outline btn-small" href="./election-calculator.html">Election Calculator</a>
           </div>
         </div>
