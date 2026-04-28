@@ -5,93 +5,273 @@
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
 
   <title>Government Directory | APRP Federal Archives</title>
-  <meta
-    name="description"
-    content="APRP government directory with leadership, regions, governors, senators, representatives, and party strength."
-  />
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css" rel="stylesheet" />
   <link rel="stylesheet" href="./assets/css/app.css" />
 
   <style>
-    .archive-home-return {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      width: fit-content;
-      margin-bottom: 14px;
-      padding: 9px 14px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.12);
-      color: #fff;
-      text-decoration: none;
-      font-weight: 950;
-      backdrop-filter: blur(10px);
+    .gov-page {
+      --dnc: #2563eb;
+      --gop: #b91c1c;
+      --ind: #7c3aed;
+      --vacant: #64748b;
+      --card-radius: 18px;
     }
 
-    .archive-home-return:hover,
-    .archive-home-return:focus {
-      background: rgba(255,255,255,.22);
-      outline: none;
+    .gov-page .section {
+      padding-top: 28px;
+      padding-bottom: 28px;
     }
 
-    .gov-page-links {
+    .gov-page .section-title {
+      font-size: clamp(2rem, 4vw, 3.6rem);
+      line-height: .92;
+      margin-bottom: 6px;
+    }
+
+    .gov-page .section-subtitle {
+      max-width: 780px;
+      margin-top: 0;
+    }
+
+    .gov-top-nav {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       margin-top: 14px;
     }
 
-    .gov-page-links .btn {
-      min-height: 0;
+    .gov-top-nav .btn {
+      min-height: 36px;
+      padding: 7px 12px;
     }
 
-    .gov-quick-access {
-      margin-top: 18px;
-    }
-
-    .gov-quick-grid {
+    .gov-compact-card-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 12px;
+      gap: 14px;
     }
 
-    .gov-quick-grid .btn {
+    .gov-balance-card,
+    #leadership-grid > *,
+    #region-directory > * {
+      border-radius: var(--card-radius) !important;
+      min-height: 0 !important;
+      padding: 18px 20px !important;
+      box-shadow: 0 18px 40px rgba(15,23,42,.10) !important;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .gov-balance-card::before,
+    #leadership-grid > *::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 7px;
+      background: var(--vacant);
+      opacity: .85;
+    }
+
+    .gov-balance-card h3,
+    #leadership-grid h3 {
+      font-size: 1.15rem;
+      margin: 6px 0 8px;
+    }
+
+    .gov-balance-card p,
+    #leadership-grid p {
+      margin: 0;
+      line-height: 1.45;
+      font-size: .95rem;
+    }
+
+    #leadership-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    #leadership-grid .eyebrow,
+    .gov-balance-card .eyebrow {
+      font-size: .68rem;
+      letter-spacing: .22em;
+    }
+
+    .status-badge,
+    .party-badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      min-height: 22px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: .7rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: #e2e8f0;
+      color: #334155;
+      margin-top: 3px;
+    }
+
+    .party-dnc,
+    .status-badge:contains("DNC") {
+      background: rgba(37,99,235,.12);
+      color: var(--dnc);
+    }
+
+    .party-gop {
+      background: rgba(185,28,28,.12);
+      color: var(--gop);
+    }
+
+    .party-ind {
+      background: rgba(124,58,237,.12);
+      color: var(--ind);
+    }
+
+    .party-vacant {
+      background: rgba(100,116,139,.14);
+      color: var(--vacant);
+    }
+
+    #leadership-grid > *:has(.party-dnc),
+    #leadership-grid > *:has(.status-badge:nth-last-child(n)) {
+      background: linear-gradient(135deg, rgba(37,99,235,.10), #fff 45%);
+    }
+
+    #leadership-grid > *:has(.party-gop) {
+      background: linear-gradient(135deg, rgba(185,28,28,.10), #fff 45%);
+    }
+
+    #leadership-grid > *:has(.party-ind) {
+      background: linear-gradient(135deg, rgba(124,58,237,.10), #fff 45%);
+    }
+
+    #leadership-grid > *:has(.party-vacant) {
+      background: linear-gradient(135deg, rgba(100,116,139,.10), #fff 45%);
+    }
+
+    #leadership-grid > *:has(.party-dnc)::before { background: var(--dnc); }
+    #leadership-grid > *:has(.party-gop)::before { background: var(--gop); }
+    #leadership-grid > *:has(.party-ind)::before { background: var(--ind); }
+    #leadership-grid > *:has(.party-vacant)::before { background: var(--vacant); }
+
+    .split-bar {
+      display: flex;
+      height: 11px;
       width: 100%;
-      justify-content: center;
-      min-height: 42px;
-      text-align: center;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5e7eb;
+      margin: 10px 0 8px;
+      border: 1px solid rgba(15,23,42,.08);
     }
 
-    @media (max-width: 860px) {
-      .archive-home-return {
-        width: 100%;
+    .split-bar > * {
+      min-width: 4px;
+      height: 100%;
+    }
+
+    .split-bar .party-dnc { background: var(--dnc); color: transparent; }
+    .split-bar .party-gop { background: var(--gop); color: transparent; }
+    .split-bar .party-ind { background: var(--ind); color: transparent; }
+    .split-bar .party-vacant { background: var(--vacant); color: transparent; }
+
+    .gov-map-shell-dark {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 24px;
+    }
+
+    .gov-map-panel-dark,
+    .gov-state-detail-dark {
+      border-radius: 20px;
+    }
+
+    .gov-map-frame-dark {
+      min-height: 520px;
+    }
+
+    #government-mapbox {
+      min-height: 520px;
+      height: 58vh;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .gov-map-mode-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+
+    .gov-map-mode-buttons button {
+      min-height: 30px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 950;
+    }
+
+    #region-directory {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    #region-directory table th,
+    #region-directory table td {
+      padding: 8px 10px;
+      font-size: .86rem;
+    }
+
+    @media (max-width: 1100px) {
+      .gov-compact-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .hero-actions .btn,
-      .gov-page-links .btn {
-        width: 100%;
-        justify-content: center;
+      #leadership-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .gov-quick-grid {
+      .gov-map-shell-dark {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .gov-compact-card-grid,
+      #leadership-grid,
+      #region-directory {
+        grid-template-columns: 1fr;
+      }
+
+      .gov-page .section {
+        padding-top: 20px;
+        padding-bottom: 20px;
+      }
+
+      #government-mapbox,
+      .gov-map-frame-dark {
+        min-height: 430px;
       }
     }
   </style>
 </head>
 
-<body>
+<body class="gov-page">
   <a class="skip-link" href="#main">Skip to main content</a>
 
   <div class="page-shell compact-page">
     <header class="site-header" data-collapsing-header>
       <div class="header-inner">
-        <a class="brand" href="./index.html" aria-label="APRP Federal Archives home">
+        <a class="brand" href="./index.html">
           <span class="brand-mark">A</span>
           <span class="brand-text">
             <span class="brand-kicker">APRP Archives</span>
@@ -99,7 +279,7 @@
           </span>
         </a>
 
-        <nav class="primary-nav" data-aprp-nav aria-label="Primary navigation"></nav>
+        <nav class="primary-nav" data-aprp-nav></nav>
       </div>
     </header>
 
@@ -111,31 +291,22 @@
           <div class="hero-kicker">Federal & Regional Structure</div>
           <h1 class="hero-title">Government Directory</h1>
           <p class="hero-subtitle">
-            Interactive record of APRP regions, governors, senators, representatives,
-            leadership, and weighted party strength.
+            APRP leadership, party control, regions, governors, senators, representatives, and weighted government strength.
           </p>
 
-          <div class="hero-actions">
-            <a class="btn btn-blue" href="#government-map">Open Map</a>
+          <div class="gov-top-nav">
+            <a class="btn btn-blue" href="#government-map">Map</a>
+            <a class="btn btn-outline" href="#control">Control</a>
             <a class="btn btn-outline" href="#leadership">Leadership</a>
             <a class="btn btn-outline" href="#regions">Regions</a>
-          </div>
-
-          <div class="gov-page-links">
-            <a class="btn btn-small btn-outline" href="./economy.html">Economy</a>
-            <a class="btn btn-small btn-outline" href="./timeline.html">Timeline</a>
-            <a class="btn btn-small btn-outline" href="./hall-of-presidents.html">Presidents</a>
-            <a class="btn btn-small btn-outline" href="./elections.html">Elections</a>
-            <a class="btn btn-small btn-outline" href="./president-tierlist.html">Tier List</a>
-            <a class="btn btn-small btn-outline" href="./election-calculator.html">Election Calculator</a>
-            <a class="btn btn-small btn-red" href="./live-results.html">Live Results</a>
+            <a class="btn btn-red" href="./live-results.html">Live Results</a>
           </div>
         </div>
 
         <aside class="hero-side-card">
-          <div class="eyebrow">Source</div>
+          <div class="eyebrow">Data Source</div>
           <h2>Public Records Sheet</h2>
-          <p>Government data loads from the published APRP archive sheets.</p>
+          <p>All visible government records load from the APRP archive sheet tabs.</p>
         </aside>
       </div>
     </section>
@@ -145,30 +316,6 @@
         <div class="container" id="government-notice"></div>
       </section>
 
-      <section class="section section-tight gov-quick-access">
-        <div class="container-wide">
-          <div class="card compact-card">
-            <div class="eyebrow">Archive Navigation</div>
-            <h3>Public Record Sections</h3>
-            <p class="text-small">
-              Use these links to move between APRP archive pages. Every page links back to the Archive Home.
-            </p>
-
-            <div class="gov-quick-grid">
-              <a class="btn btn-outline btn-small" href="./index.html">Archive Home</a>
-              <a class="btn btn-outline btn-small" href="./economy.html">Economy</a>
-              <a class="btn btn-outline btn-small" href="./timeline.html">Timeline</a>
-              <a class="btn btn-outline btn-small" href="./hall-of-presidents.html">Presidents</a>
-              <a class="btn btn-outline btn-small" href="./elections.html">Elections</a>
-              <a class="btn btn-outline btn-small" href="./president-tierlist.html">President Tier List</a>
-              <a class="btn btn-outline btn-small" href="./election-calculator.html">Election Calculator</a>
-              <a class="btn btn-red btn-small" href="./live-results.html">Live Results</a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- MAP MOVED TO TOP -->
       <section class="section section-tight" id="government-map">
         <div class="container-wide">
           <div class="section-header compact-section-header">
@@ -176,17 +323,17 @@
               <div class="eyebrow">Interactive Government Map</div>
               <h2 class="section-title">State & Region Map</h2>
               <p class="section-subtitle">
-                Switch between regions, weighted party strength, districts, Senate control, and governors.
+                Switch between region, strength, House delegation, Senate control, and governor control.
               </p>
             </div>
           </div>
 
           <div class="map-shell gov-map-shell-dark">
             <section class="panel map-panel gov-map-panel-dark">
-              <div class="map-mode-buttons gov-map-mode-buttons" role="group" aria-label="Map mode">
+              <div class="map-mode-buttons gov-map-mode-buttons">
                 <button type="button" class="is-active" data-map-mode="region">Region</button>
                 <button type="button" data-map-mode="strength">Strength</button>
-                <button type="button" data-map-mode="district">Districts</button>
+                <button type="button" data-map-mode="district">House</button>
                 <button type="button" data-map-mode="senate">Senate</button>
                 <button type="button" data-map-mode="governor">Governors</button>
               </div>
@@ -200,70 +347,73 @@
               <div class="eyebrow">Selected State</div>
               <h3>Choose a state</h3>
               <p>
-                Click a state to view its region, governor, senators with classes,
-                representative, and party strength score.
+                Click a state to view its region, governor, senators, House delegation, and party strength score.
               </p>
             </aside>
           </div>
         </div>
       </section>
 
-      <!-- BALANCE / LEADERSHIP AFTER MAP -->
-      <section class="section section-tight" id="leadership">
-        <div class="container">
+      <section class="section section-tight" id="control">
+        <div class="container-wide">
           <div class="section-header compact-section-header">
             <div>
               <div class="eyebrow">Balance of Power</div>
               <h2 class="section-title">Control of Government</h2>
               <p class="section-subtitle">
-                Party balance across executive, Senate, House, and governors.
+                Compact party balance across executive, Senate, House, and regional governors.
               </p>
             </div>
           </div>
 
-          <div class="grid grid-4 compact-card-grid">
-            <article class="card compact-card">
+          <div class="gov-compact-card-grid">
+            <article class="card compact-card gov-balance-card">
               <div class="eyebrow">Executive</div>
               <h3 id="exec-title">Executive Branch</h3>
               <p id="exec-summary">Loading executive leadership...</p>
             </article>
 
-            <article class="card compact-card">
+            <article class="card compact-card gov-balance-card">
               <div class="eyebrow">Senate</div>
               <h3>Senate Control</h3>
-              <div id="senate-bar" class="mt-2"></div>
+              <div id="senate-bar"></div>
             </article>
 
-            <article class="card compact-card">
+            <article class="card compact-card gov-balance-card">
               <div class="eyebrow">House</div>
               <h3>House Control</h3>
-              <div id="house-bar" class="mt-2"></div>
+              <div id="house-bar"></div>
             </article>
 
-            <article class="card compact-card">
+            <article class="card compact-card gov-balance-card">
               <div class="eyebrow">Governors</div>
               <h3>Governor Control</h3>
-              <div id="governor-bar" class="mt-2"></div>
+              <div id="governor-bar"></div>
             </article>
           </div>
+        </div>
+      </section>
 
-          <div class="section-tight">
-            <div class="section-header compact-section-header">
-              <div>
-                <div class="eyebrow">Federal Leadership</div>
-                <h2 class="section-title">Leadership Roster</h2>
-              </div>
+      <section class="section section-tight" id="leadership">
+        <div class="container-wide">
+          <div class="section-header compact-section-header">
+            <div>
+              <div class="eyebrow">Federal Leadership</div>
+              <h2 class="section-title">Leadership Roster</h2>
+              <p class="section-subtitle">
+                Executive, cabinet, congressional, and federal leadership offices.
+              </p>
             </div>
+          </div>
 
-            <div class="grid grid-3 compact-card-grid" id="leadership-grid">
-              <div class="notice">Loading leadership...</div>
-            </div>
+          <div id="leadership-grid">
+            <div class="notice">Loading leadership...</div>
           </div>
         </div>
       </section>
 
       <section class="section section-tight" id="regions">
-        <div class="container">
+        <div class="container-wide">
           <div class="section-header compact-section-header">
             <div>
               <div class="eyebrow">Regional Directory</div>
@@ -274,7 +424,7 @@
             </div>
           </div>
 
-          <div id="region-directory" class="grid grid-2 compact-card-grid">
+          <div id="region-directory">
             <div class="notice">Loading regions...</div>
           </div>
         </div>
@@ -291,7 +441,7 @@
       </div>
     </footer>
 
-    <nav class="mobile-bottom-nav" data-mobile-nav aria-label="Mobile navigation"></nav>
+    <nav class="mobile-bottom-nav" data-mobile-nav></nav>
   </div>
 
   <script src="./assets/js/sheets.js"></script>
