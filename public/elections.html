@@ -3,83 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>Election Hall | APRP Federal Archives</title>
-
-  <link rel="stylesheet" href="./assets/css/app.css" />
+  <title>Hall of Elections | APRP Federal Archives</title>
+  <link rel="stylesheet" href="assets/css/app.css" />
 </head>
-
 <body>
-  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="page-header">
+    <nav class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-seal">A</span>
+        <span>
+          <span class="brand-kicker">APRP Archives</span>
+          <strong>Office of Records</strong>
+        </span>
+      </a>
 
-  <div class="page-shell">
-    <header class="site-header" data-collapsing-header>
-      <div class="header-inner">
-        <a class="brand" href="./index.html">
-          <span class="brand-mark">A</span>
-          <span class="brand-text">
-            <span class="brand-kicker">APRP Archives</span>
-            <span class="brand-title">Election Hall</span>
-          </span>
-        </a>
-
-        <nav class="primary-nav" data-aprp-nav></nav>
+      <div class="desktop-nav">
+        <a href="index.html">Home</a>
+        <a href="government.html">Government</a>
+        <a href="economy.html">Economy</a>
+        <a href="timeline.html">Timeline</a>
+        <a href="hall-of-presidents.html">Presidents</a>
+        <a class="nav-live" href="live-results.html">Live Results</a>
       </div>
-    </header>
+    </nav>
+  </header>
 
-    <section class="archive-hero">
-      <div class="hero-content">
-        <div>
-          <div class="hero-kicker">Election Archive</div>
-          <h1 class="hero-title">Election Hall</h1>
-          <p class="hero-subtitle">
-            Presidential, Senate, House, gubernatorial, and regional election records across the APRP canon.
-          </p>
+  <main class="page-shell">
+    <a class="back-home-btn" href="index.html">← Archive Home</a>
 
-          <div class="hero-actions">
-            <a class="btn btn-blue" href="./live-results.html">Live Results</a>
-            <a class="btn btn-outline" href="./government.html">Government</a>
-            <a class="btn btn-outline" href="./timeline.html">Timeline</a>
-          </div>
-        </div>
+    <section class="section-card">
+      <p class="eyebrow blue">Electoral Records</p>
+      <h1>Hall of Elections</h1>
+      <p>Presidential election summaries, congressional control, party charts, and electoral history.</p>
 
-        <aside class="hero-side-card" id="elections-hero-card">
-          <div class="eyebrow">Archive Status</div>
-          <h2>Loading elections...</h2>
-          <p>Reading public election records.</p>
-        </aside>
+      <div class="page-link-grid">
+        <a href="live-results.html">Live Results</a>
+        <a href="election-calculator.html">Election Calculator</a>
+        <a href="government.html">Government</a>
+        <a href="hall-of-presidents.html">Presidents</a>
       </div>
     </section>
 
-    <main id="main">
-      <section class="section section-tight">
-        <div class="container-wide">
-          <div id="election-hall-root">
-            <div class="archive-card">
-              <div class="eyebrow">Loading</div>
-              <h2>Loading Election Hall...</h2>
-              <p>Reading election records from the archive sheet.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <div class="footer-inner">
-        <div>
-          <strong>APRP Federal Archives</strong>
-          <div class="text-small">Public archive for APRP elections and government records.</div>
-        </div>
-        <div class="text-small">Election Hall</div>
+    <section class="section-card">
+      <div class="section-heading">
+        <p class="eyebrow blue">Control Charts</p>
+        <h2>Congressional Breakdown</h2>
       </div>
-    </footer>
 
-    <nav class="mobile-bottom-nav" data-mobile-nav></nav>
-  </div>
+      <div class="chart-placeholder">
+        Election and congressional charts load here.
+      </div>
+    </section>
+  </main>
 
-  <script src="./assets/js/sheets.js"></script>
-  <script src="./assets/js/shared.js"></script>
-  <script src="./assets/js/elections.js"></script>
+  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+    <a href="index.html">Home</a>
+    <a href="government.html">Gov</a>
+    <a href="economy.html">Econ</a>
+    <a href="hall-of-presidents.html">Pres</a>
+    <a href="live-results.html">Live</a>
+  </nav>
 </body>
 </html>
