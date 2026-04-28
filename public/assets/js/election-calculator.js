@@ -1,165 +1,151 @@
-/* APRP Election Calculator
-   Interactive path-to-270 custom prediction map.
+/* APRP Election Calculator — Full Working Rewrite
+   Requires:
+   - sheets.js before this file
+   - Mapbox loaded on calculator page
+   - CALC_STATE_BASELINES
+   - CALC_LOBBIES
+   - CALC_EXPERIENCE or CALC_EXPERIANCE
+   - CALC_RULES
 */
 
 (function () {
-  const MAPBOX_TOKEN =
-    "YOUR_MAPBOX_TOKEN_HERE";
+  "use strict";
 
-  const US_STATES_GEOJSON_URL =
-    "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json";
-
-  const STATE_NAME_TO_ABBR = {
-    Alabama: "AL",
-    Alaska: "AK",
-    Arizona: "AZ",
-    Arkansas: "AR",
-    California: "CA",
-    Colorado: "CO",
-    Connecticut: "CT",
-    Delaware: "DE",
-    "District of Columbia": "DC",
-    Florida: "FL",
-    Georgia: "GA",
-    Hawaii: "HI",
-    Idaho: "ID",
-    Illinois: "IL",
-    Indiana: "IN",
-    Iowa: "IA",
-    Kansas: "KS",
-    Kentucky: "KY",
-    Louisiana: "LA",
-    Maine: "ME",
-    Maryland: "MD",
-    Massachusetts: "MA",
-    Michigan: "MI",
-    Minnesota: "MN",
-    Mississippi: "MS",
-    Missouri: "MO",
-    Montana: "MT",
-    Nebraska: "NE",
-    Nevada: "NV",
-    "New Hampshire": "NH",
-    "New Jersey": "NJ",
-    "New Mexico": "NM",
-    "New York": "NY",
-    "North Carolina": "NC",
-    "North Dakota": "ND",
-    Ohio: "OH",
-    Oklahoma: "OK",
-    Oregon: "OR",
-    Pennsylvania: "PA",
-    "Rhode Island": "RI",
-    "South Carolina": "SC",
-    "South Dakota": "SD",
-    Tennessee: "TN",
-    Texas: "TX",
-    Utah: "UT",
-    Vermont: "VT",
-    Virginia: "VA",
-    Washington: "WA",
-    "West Virginia": "WV",
-    Wisconsin: "WI",
-    Wyoming: "WY",
+  const DEFAULT_RULES = {
+    campaign_point_shift: 0.5,
+    convention_points: 3,
+    vp_points: 2,
+    home_state_points: 3,
+    debate_shift: 2.5,
+    incumbency_shift: 1.5,
+    primary_unopposed_shift: 1,
+    primary_80plus_shift: 0.5,
+    popular_vote_divisor: 5,
+    approval_divisor: 10,
+    ideology_base_points: 20,
+    ideology_points_per_lobby: 10,
+    ideology_shift_divisor: 40,
+    ideology_shift_cap: 5
   };
 
-  const STATE_NAMES = Object.fromEntries(
-    Object.entries(STATE_NAME_TO_ABBR).map(([name, abbr]) => [abbr, name])
-  );
-
-  const EV_2012 = {
-    AL: 9,
-    AK: 3,
-    AZ: 11,
-    AR: 6,
-    CA: 55,
-    CO: 9,
-    CT: 7,
-    DE: 3,
-    DC: 3,
-    FL: 29,
-    GA: 16,
-    HI: 4,
-    ID: 4,
-    IL: 20,
-    IN: 11,
-    IA: 6,
-    KS: 6,
-    KY: 8,
-    LA: 8,
-    ME: 4,
-    MD: 10,
-    MA: 11,
-    MI: 16,
-    MN: 10,
-    MS: 6,
-    MO: 10,
-    MT: 3,
-    NE: 5,
-    NV: 6,
-    NH: 4,
-    NJ: 14,
-    NM: 5,
-    NY: 29,
-    NC: 15,
-    ND: 3,
-    OH: 18,
-    OK: 7,
-    OR: 7,
-    PA: 20,
-    RI: 4,
-    SC: 9,
-    SD: 3,
-    TN: 11,
-    TX: 38,
-    UT: 6,
-    VT: 3,
-    VA: 13,
-    WA: 12,
-    WV: 5,
-    WI: 10,
-    WY: 3,
+  const STATE_ELECTORS_2012 = {
+    AL: 9, AK: 3, AZ: 11, AR: 6, CA: 55, CO: 9, CT: 7, DE: 3, DC: 3,
+    FL: 29, GA: 16, HI: 4, ID: 4, IL: 20, IN: 11, IA: 6, KS: 6, KY: 8,
+    LA: 8, ME: 4, MD: 10, MA: 11, MI: 16, MN: 10, MS: 6, MO: 10, MT: 3,
+    NE: 5, NV: 6, NH: 4, NJ: 14, NM: 5, NY: 29, NC: 15, ND: 3, OH: 18,
+    OK: 7, OR: 7, PA: 20, RI: 4, SC: 9, SD: 3, TN: 11, TX: 38, UT: 6,
+    VT: 3, VA: 13, WA: 12, WV: 5, WI: 10, WY: 3
   };
 
-  const STATUS = {
-    DNC: {
-      label: "DNC",
-      color: "#2563eb",
-      soft: "rgba(37,99,235,.16)",
-    },
-    GOP: {
-      label: "GOP",
-      color: "#dc2626",
-      soft: "rgba(220,38,38,.16)",
-    },
-    IND: {
-      label: "IND",
-      color: "#7c3aed",
-      soft: "rgba(124,58,237,.16)",
-    },
-    TOSSUP: {
-      label: "Tossup",
-      color: "#64748b",
-      soft: "rgba(100,116,139,.16)",
-    },
+  const STATE_ORDER = [
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI",
+    "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN",
+    "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH",
+    "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA",
+    "WV", "WI", "WY"
+  ];
+
+  const PARTY_COLORS = {
+    dnc: "#2563eb",
+    gop: "#dc2626",
+    other: "#7c3aed",
+    tossup: "#64748b"
   };
+
+  const STORAGE_KEY = "aprp_election_calculator_v2";
 
   let map = null;
-  let currentPaint = "DNC";
-  let selectedState = "";
-  let states = {};
-  let geojsonCache = null;
+  let mapReady = false;
+  let stateRows = [];
+  let lobbyRows = [];
+  let experienceRows = [];
+  let ideologyRows = [];
+  let rules = { ...DEFAULT_RULES };
+  let results = {};
+  let selectedState = null;
 
-  Object.keys(EV_2012).forEach((abbr) => {
-    states[abbr] = "TOSSUP";
-  });
+  const state = {
+    candidates: {
+      dnc: {
+        name: "Democratic Candidate",
+        experience: "none",
+        lobbies: [],
+        ideology: {
+          progressive: 0,
+          liberal: 0,
+          conservative: 0,
+          nationalist: 0,
+          libertarian: 0,
+          populist: 0
+        },
+        debateWins: 0,
+        primary: "none"
+      },
+      gop: {
+        name: "Republican Candidate",
+        experience: "none",
+        lobbies: [],
+        ideology: {
+          progressive: 0,
+          liberal: 0,
+          conservative: 0,
+          nationalist: 0,
+          libertarian: 0,
+          populist: 0
+        },
+        debateWins: 0,
+        primary: "none"
+      },
+      other: {
+        name: "Independent Candidate",
+        experience: "none",
+        lobbies: [],
+        ideology: {
+          progressive: 0,
+          liberal: 0,
+          conservative: 0,
+          nationalist: 0,
+          libertarian: 0,
+          populist: 0
+        },
+        debateWins: 0,
+        primary: "none"
+      }
+    },
 
-  function cleanCell(value) {
+    national: {
+      incumbentParty: "none",
+      incumbentCandidate: "no",
+      dncPvLead: 0,
+      gopPvLead: 0,
+      otherPvLead: 0,
+      dncDebuff: 0,
+      gopDebuff: 0,
+      otherDebuff: 0,
+      approvalGap: 0
+    },
+
+    campaignPoints: {},
+    manualCalls: {}
+  };
+
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+  function clean(value) {
     return String(value ?? "").trim();
   }
 
+  function toNumber(value, fallback = 0) {
+    const raw = clean(value).replace(/[$,%]/g, "").replace(/,/g, "");
+    if (!raw) return fallback;
+
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
   function safeHTML(value) {
-    return cleanCell(value)
+    return clean(value)
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
@@ -167,653 +153,862 @@
       .replaceAll("'", "&#039;");
   }
 
-  function getEl(selector) {
-    return document.querySelector(selector);
+  async function loadSheet(name) {
+    if (window.APRP && typeof window.APRP.fetchSheet === "function") {
+      return window.APRP.fetchSheet(name);
+    }
+
+    if (window.APRP && typeof window.APRP.loadSheet === "function") {
+      return window.APRP.loadSheet(name);
+    }
+
+    if (window.APRP_SHEETS && typeof window.APRP_SHEETS.loadSheet === "function") {
+      return window.APRP_SHEETS.loadSheet(name);
+    }
+
+    throw new Error("No sheet loader found. Check sheets.js is loaded before election-calculator.js.");
   }
 
-  function stateAbbrFromFeature(feature) {
-    const name = feature?.properties?.name || feature?.properties?.NAME;
-    return STATE_NAME_TO_ABBR[name] || "";
+  async function loadCalculatorData() {
+    const [baselines, lobbies, rulesData] = await Promise.all([
+      loadSheet("CALC_STATE_BASELINES"),
+      loadSheet("CALC_LOBBIES"),
+      loadSheet("CALC_RULES")
+    ]);
+
+    let experience = [];
+    try {
+      experience = await loadSheet("CALC_EXPERIENCE");
+    } catch {
+      experience = await loadSheet("CALC_EXPERIANCE");
+    }
+
+    stateRows = normalizeBaselines(baselines);
+    lobbyRows = normalizeLobbies(lobbies);
+    experienceRows = normalizeExperience(experience);
+    rules = normalizeRules(rulesData);
+
+    ideologyRows = stateRows.map((row, index) => ({
+      state_abbr: row.state_abbr,
+      base_other: toNumber(row.base_other, Math.max(0, 100 - row.base_gop - row.base_dem)),
+      progressive: toNumber(row.progressive, 1),
+      liberal: toNumber(row.liberal, 1),
+      conservative: toNumber(row.conservative, 1),
+      nationalist: toNumber(row.nationalist, 1),
+      libertarian: toNumber(row.libertarian, 1),
+      populist: toNumber(row.populist, 1),
+      _index: index
+    }));
+
+    STATE_ORDER.forEach((abbr) => {
+      if (!state.campaignPoints[abbr]) {
+        state.campaignPoints[abbr] = { dnc: 0, gop: 0, other: 0 };
+      }
+    });
   }
 
-  function totalFor(status) {
-    return Object.entries(states).reduce((sum, [abbr, stateStatus]) => {
-      if (stateStatus !== status) return sum;
-      return sum + (EV_2012[abbr] || 0);
+  function normalizeRules(rows) {
+    const out = { ...DEFAULT_RULES };
+
+    rows.forEach((row) => {
+      const key = clean(row.key).toLowerCase();
+      const value = toNumber(row.value, NaN);
+
+      if (key && Number.isFinite(value)) {
+        out[key] = value;
+      }
+    });
+
+    return out;
+  }
+
+  function normalizeBaselines(rows) {
+    return rows
+      .filter((row) => clean(row.state_abbr))
+      .map((row, index) => {
+        const abbr = clean(row.state_abbr).toUpperCase();
+
+        return {
+          ...row,
+          state_abbr: abbr,
+          base_gop: toNumber(row.base_gop, 0),
+          base_dem: toNumber(row.base_dem, 0),
+          base_dnc: toNumber(row.base_dnc, toNumber(row.base_dem, 0)),
+          base_other: toNumber(row.base_other, Math.max(0, 100 - toNumber(row.base_gop, 0) - toNumber(row.base_dem, 0))),
+          ev: toNumber(row.ev, STATE_ELECTORS_2012[abbr] || 0),
+          _index: index
+        };
+      })
+      .filter((row) => STATE_ELECTORS_2012[row.state_abbr] !== undefined);
+  }
+
+  function normalizeLobbies(rows) {
+    return rows
+      .filter((row) => clean(row.lobby_id) || clean(row.lobby_name))
+      .map((row) => ({
+        id: clean(row.lobby_id || row.id || row.lobby_name).toLowerCase().replace(/\s+/g, "_"),
+        name: clean(row.lobby_name || row.name || row.lobby_id),
+        shift: toNumber(row.shift, 0),
+        states: clean(row.states || "ALL")
+          .toUpperCase()
+          .split(",")
+          .map((item) => clean(item))
+          .filter(Boolean)
+      }));
+  }
+
+  function normalizeExperience(rows) {
+    const base = rows
+      .filter((row) => clean(row.experience_id) || clean(row.label))
+      .map((row) => ({
+        id: clean(row.experience_id || row.id || row.label).toLowerCase().replace(/\s+/g, "_"),
+        label: clean(row.label || row.experience_id || row.id),
+        shift: toNumber(row.shift, 0)
+      }));
+
+    if (!base.some((row) => row.id === "none")) {
+      base.unshift({ id: "none", label: "None", shift: 0 });
+    }
+
+    return base;
+  }
+
+  function getBaseline(abbr) {
+    return stateRows.find((row) => row.state_abbr === abbr);
+  }
+
+  function getIdeologyRow(abbr) {
+    return ideologyRows.find((row) => row.state_abbr === abbr);
+  }
+
+  function getExperienceShift(candidateKey) {
+    const id = state.candidates[candidateKey].experience;
+    const found = experienceRows.find((row) => row.id === id);
+    return found ? found.shift : 0;
+  }
+
+  function lobbyApplies(lobby, abbr) {
+    return lobby.states.includes("ALL") || lobby.states.includes(abbr);
+  }
+
+  function getLobbyShift(candidateKey, abbr) {
+    const selected = state.candidates[candidateKey].lobbies;
+
+    return lobbyRows.reduce((sum, lobby) => {
+      if (!selected.includes(lobby.id)) return sum;
+      if (!lobbyApplies(lobby, abbr)) return sum;
+      return sum + lobby.shift;
     }, 0);
   }
 
-  function tossupTotal() {
-    return totalFor("TOSSUP");
+  function getIdeologyShift(candidateKey, abbr) {
+    const candidate = state.candidates[candidateKey];
+    const row = getIdeologyRow(abbr);
+
+    if (!row) return 0;
+
+    const ideology = candidate.ideology;
+    const raw =
+      toNumber(ideology.progressive) * toNumber(row.progressive, 1) +
+      toNumber(ideology.liberal) * toNumber(row.liberal, 1) +
+      toNumber(ideology.conservative) * toNumber(row.conservative, 1) +
+      toNumber(ideology.nationalist) * toNumber(row.nationalist, 1) +
+      toNumber(ideology.libertarian) * toNumber(row.libertarian, 1) +
+      toNumber(ideology.populist) * toNumber(row.populist, 1);
+
+    const shifted = raw / toNumber(rules.ideology_shift_divisor, 40);
+    const cap = toNumber(rules.ideology_shift_cap, 5);
+
+    return Math.max(-cap, Math.min(cap, shifted));
   }
 
-  function leader() {
-    const dnc = totalFor("DNC");
-    const gop = totalFor("GOP");
-    const ind = totalFor("IND");
-
-    if (dnc >= 270) return "DNC";
-    if (gop >= 270) return "GOP";
-    if (ind >= 270) return "IND";
-    if (dnc > gop && dnc > ind) return "DNC";
-    if (gop > dnc && gop > ind) return "GOP";
-    if (ind > dnc && ind > gop) return "IND";
-
-    return "TOSSUP";
+  function getCampaignShift(candidateKey, abbr) {
+    const points = toNumber(state.campaignPoints[abbr]?.[candidateKey], 0);
+    return points * toNumber(rules.campaign_point_shift, 0.5);
   }
 
-  function neededToWin(status) {
-    return Math.max(0, 270 - totalFor(status));
+  function getNationalShift(candidateKey) {
+    let shift = 0;
+
+    if (state.national.incumbentCandidate === "yes") {
+      if (state.national.incumbentParty === candidateKey) {
+        shift += toNumber(rules.incumbency_shift, 1.5);
+      }
+    }
+
+    shift += toNumber(state.national[`${candidateKey}PvLead`], 0) / toNumber(rules.popular_vote_divisor, 5);
+    shift -= toNumber(state.national[`${candidateKey}Debuff`], 0);
+
+    shift += toNumber(state.candidates[candidateKey].debateWins, 0) * toNumber(rules.debate_shift, 2.5);
+
+    if (state.candidates[candidateKey].primary === "unopposed") {
+      shift += toNumber(rules.primary_unopposed_shift, 1);
+    }
+
+    if (state.candidates[candidateKey].primary === "80plus") {
+      shift += toNumber(rules.primary_80plus_shift, 0.5);
+    }
+
+    if (state.national.incumbentParty === candidateKey) {
+      shift += toNumber(state.national.approvalGap, 0) / toNumber(rules.approval_divisor, 10);
+    }
+
+    return shift;
   }
 
-  function injectStyles() {
-    if (document.querySelector("#aprp-election-calculator-style")) return;
+  function calculateState(abbr) {
+    const baseline = getBaseline(abbr);
+
+    if (!baseline) {
+      return null;
+    }
+
+    const ev = STATE_ELECTORS_2012[abbr] || baseline.ev || 0;
+
+    let dnc = baseline.base_dnc || baseline.base_dem || 0;
+    let gop = baseline.base_gop || 0;
+    let other = baseline.base_other || Math.max(0, 100 - dnc - gop);
+
+    dnc += getNationalShift("dnc");
+    gop += getNationalShift("gop");
+    other += getNationalShift("other");
+
+    dnc += getExperienceShift("dnc");
+    gop += getExperienceShift("gop");
+    other += getExperienceShift("other");
+
+    dnc += getLobbyShift("dnc", abbr);
+    gop += getLobbyShift("gop", abbr);
+    other += getLobbyShift("other", abbr);
+
+    dnc += getIdeologyShift("dnc", abbr);
+    gop += getIdeologyShift("gop", abbr);
+    other += getIdeologyShift("other", abbr);
+
+    dnc += getCampaignShift("dnc", abbr);
+    gop += getCampaignShift("gop", abbr);
+    other += getCampaignShift("other", abbr);
+
+    dnc = Math.max(0, dnc);
+    gop = Math.max(0, gop);
+    other = Math.max(0, other);
+
+    const total = dnc + gop + other || 1;
+    dnc = (dnc / total) * 100;
+    gop = (gop / total) * 100;
+    other = (other / total) * 100;
+
+    let winner = "dnc";
+    let winnerPct = dnc;
+
+    if (gop > winnerPct) {
+      winner = "gop";
+      winnerPct = gop;
+    }
+
+    if (other > winnerPct) {
+      winner = "other";
+      winnerPct = other;
+    }
+
+    const sorted = [
+      { party: "dnc", pct: dnc },
+      { party: "gop", pct: gop },
+      { party: "other", pct: other }
+    ].sort((a, b) => b.pct - a.pct);
+
+    let finalWinner = winner;
+
+    if (state.manualCalls[abbr]) {
+      finalWinner = state.manualCalls[abbr];
+    }
+
+    return {
+      state_abbr: abbr,
+      ev,
+      dnc,
+      gop,
+      other,
+      winner,
+      finalWinner,
+      margin: sorted[0].pct - sorted[1].pct,
+      leaderPct: sorted[0].pct,
+      secondParty: sorted[1].party,
+      secondPct: sorted[1].pct
+    };
+  }
+
+  function calculateAll() {
+    results = {};
+
+    STATE_ORDER.forEach((abbr) => {
+      const result = calculateState(abbr);
+
+      if (result) {
+        results[abbr] = result;
+      }
+    });
+
+    updateTotals();
+    updateMapColors();
+    updateSelectedState();
+    updateClosestStates();
+    updatePathToVictory();
+  }
+
+  function getTotals() {
+    const totals = { dnc: 0, gop: 0, other: 0 };
+
+    Object.values(results).forEach((result) => {
+      totals[result.finalWinner] += result.ev;
+    });
+
+    return totals;
+  }
+
+  function updateTotals() {
+    const totals = getTotals();
+
+    setTextAny(["#calc-dnc-ev", "#dnc-ev", "[data-calc-dnc-ev]"], totals.dnc);
+    setTextAny(["#calc-gop-ev", "#gop-ev", "[data-calc-gop-ev]"], totals.gop);
+    setTextAny(["#calc-other-ev", "#other-ev", "[data-calc-other-ev]"], totals.other);
+
+    const winner = totals.dnc >= 270 ? "DNC" : totals.gop >= 270 ? "GOP" : totals.other >= 270 ? "OTHER" : "NO MAJORITY";
+    const margin = Math.abs(totals.dnc - totals.gop);
+
+    setTextAny(["#calc-winner", "[data-calc-winner]"], winner);
+    setTextAny(["#calc-margin", "[data-calc-margin]"], margin);
+  }
+
+  function setTextAny(selectors, value) {
+    selectors.forEach((selector) => {
+      const el = $(selector);
+      if (el) el.textContent = value;
+    });
+  }
+
+  function updateMapColors() {
+    if (!mapReady || !map || !map.getLayer("state-fills")) return;
+
+    const expression = ["match", ["get", "abbr"]];
+
+    STATE_ORDER.forEach((abbr) => {
+      const result = results[abbr];
+      const color = result ? PARTY_COLORS[result.finalWinner] : PARTY_COLORS.tossup;
+      expression.push(abbr, color);
+    });
+
+    expression.push(PARTY_COLORS.tossup);
+
+    map.setPaintProperty("state-fills", "fill-color", expression);
+  }
+
+  function initMap() {
+    const container =
+      $("#calculator-map") ||
+      $("#election-calculator-map") ||
+      $("#calc-map") ||
+      $("[data-calculator-map]");
+
+    if (!container) {
+      console.warn("No calculator map container found.");
+      return;
+    }
+
+    if (!window.mapboxgl) {
+      container.innerHTML = `<div class="notice">Mapbox is not loaded. Check calculator HTML scripts.</div>`;
+      return;
+    }
+
+    if (window.APRP_ENV?.MAPBOX_TOKEN) {
+      window.mapboxgl.accessToken = window.APRP_ENV.MAPBOX_TOKEN;
+    }
+
+    map = new mapboxgl.Map({
+      container,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [-98.5, 39.8],
+      zoom: 3.05,
+      attributionControl: true
+    });
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
+
+    map.on("load", () => {
+      map.addSource("aprp-states", {
+        type: "geojson",
+        data: buildStateGeoJSON()
+      });
+
+      map.addLayer({
+        id: "state-fills",
+        type: "fill",
+        source: "aprp-states",
+        paint: {
+          "fill-color": PARTY_COLORS.tossup,
+          "fill-opacity": 0.72
+        }
+      });
+
+      map.addLayer({
+        id: "state-lines",
+        type: "line",
+        source: "aprp-states",
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": 1.2,
+          "line-opacity": 0.65
+        }
+      });
+
+      map.on("click", "state-fills", (event) => {
+        const feature = event.features?.[0];
+        const abbr = feature?.properties?.abbr;
+
+        if (abbr) {
+          selectedState = abbr;
+          cycleManualState(abbr);
+        }
+      });
+
+      map.on("mousemove", "state-fills", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      map.on("mouseleave", "state-fills", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
+      mapReady = true;
+      calculateAll();
+    });
+  }
+
+  function buildStateGeoJSON() {
+    const features = STATE_ORDER.map((abbr) => {
+      const coords = roughStateBox(abbr);
+
+      return {
+        type: "Feature",
+        properties: { abbr },
+        geometry: {
+          type: "Polygon",
+          coordinates: [coords]
+        }
+      };
+    });
+
+    return {
+      type: "FeatureCollection",
+      features
+    };
+  }
+
+  function roughStateBox(abbr) {
+    const boxes = {
+      WA: [-124.8, 45.5, -116.9, 49.1], OR: [-124.8, 42.0, -116.4, 46.3],
+      CA: [-124.6, 32.4, -114.1, 42.1], ID: [-117.3, 42.0, -111.0, 49.1],
+      NV: [-120.1, 35.0, -114.0, 42.1], AZ: [-114.9, 31.3, -109.0, 37.1],
+      MT: [-116.1, 44.3, -104.0, 49.1], WY: [-111.1, 41.0, -104.0, 45.1],
+      UT: [-114.1, 37.0, -109.0, 42.1], CO: [-109.1, 37.0, -102.0, 41.1],
+      NM: [-109.1, 31.3, -103.0, 37.1], ND: [-104.1, 45.9, -96.5, 49.1],
+      SD: [-104.1, 42.4, -96.4, 46.0], NE: [-104.1, 40.0, -95.3, 43.1],
+      KS: [-102.1, 37.0, -94.6, 40.1], OK: [-103.1, 33.6, -94.4, 37.1],
+      TX: [-106.7, 25.8, -93.5, 36.6], MN: [-97.3, 43.5, -89.4, 49.4],
+      IA: [-96.7, 40.3, -90.1, 43.6], MO: [-95.8, 35.9, -89.1, 40.7],
+      AR: [-94.7, 33.0, -89.6, 36.6], LA: [-94.1, 28.9, -88.8, 33.1],
+      WI: [-92.9, 42.5, -86.7, 47.1], IL: [-91.6, 37.0, -87.0, 42.6],
+      MI: [-90.5, 41.7, -82.1, 48.4], IN: [-88.1, 37.7, -84.7, 41.8],
+      KY: [-89.6, 36.5, -81.9, 39.2], TN: [-90.4, 34.9, -81.6, 36.7],
+      MS: [-91.7, 30.1, -88.1, 35.1], AL: [-88.5, 30.1, -84.9, 35.1],
+      OH: [-84.9, 38.4, -80.5, 42.3], GA: [-85.7, 30.3, -80.8, 35.1],
+      FL: [-87.7, 24.4, -80.0, 31.1], SC: [-83.4, 32.0, -78.5, 35.3],
+      NC: [-84.4, 33.8, -75.4, 36.7], VA: [-83.8, 36.5, -75.2, 39.5],
+      WV: [-82.7, 37.1, -77.7, 40.7], PA: [-80.6, 39.7, -74.6, 42.3],
+      NY: [-79.8, 40.5, -71.8, 45.1], VT: [-73.5, 42.7, -71.4, 45.1],
+      NH: [-72.6, 42.6, -70.6, 45.3], ME: [-71.2, 43.0, -66.8, 47.5],
+      MA: [-73.6, 41.2, -69.8, 42.9], RI: [-71.9, 41.1, -71.0, 42.1],
+      CT: [-73.8, 40.9, -71.7, 42.1], NJ: [-75.6, 38.9, -73.8, 41.4],
+      DE: [-75.8, 38.4, -75.0, 39.9], MD: [-79.5, 37.8, -75.0, 39.8],
+      DC: [-77.2, 38.75, -76.85, 39.05], AK: [-170, 52, -130, 71],
+      HI: [-161, 18, -154, 23]
+    };
+
+    const b = boxes[abbr] || [-100, 40, -99, 41];
+    const [w, s, e, n] = b;
+
+    return [
+      [w, s],
+      [e, s],
+      [e, n],
+      [w, n],
+      [w, s]
+    ];
+  }
+
+  function cycleManualState(abbr) {
+    const current = state.manualCalls[abbr];
+
+    if (!current) {
+      state.manualCalls[abbr] = "dnc";
+    } else if (current === "dnc") {
+      state.manualCalls[abbr] = "gop";
+    } else if (current === "gop") {
+      state.manualCalls[abbr] = "other";
+    } else {
+      delete state.manualCalls[abbr];
+    }
+
+    calculateAll();
+  }
+
+  function updateSelectedState() {
+    const box =
+      $("#selected-state-panel") ||
+      $("#calc-selected-state") ||
+      $("[data-selected-state]");
+
+    if (!box) return;
+
+    if (!selectedState || !results[selectedState]) {
+      box.innerHTML = `
+        <h3>Choose a State</h3>
+        <p>Tap or click a state to view baseline lean, applied shifts, final result, and EV allocation.</p>
+      `;
+      return;
+    }
+
+    const r = results[selectedState];
+
+    box.innerHTML = `
+      <h3>${safeHTML(selectedState)} — ${r.ev} EV</h3>
+      <p><strong>Winner:</strong> ${safeHTML(r.finalWinner.toUpperCase())}</p>
+      <p><strong>DNC:</strong> ${r.dnc.toFixed(1)}%</p>
+      <p><strong>GOP:</strong> ${r.gop.toFixed(1)}%</p>
+      <p><strong>Other:</strong> ${r.other.toFixed(1)}%</p>
+      <p><strong>Margin:</strong> ${r.margin.toFixed(1)}%</p>
+      <p><strong>Manual:</strong> ${state.manualCalls[selectedState] ? state.manualCalls[selectedState].toUpperCase() : "Auto"}</p>
+    `;
+  }
+
+  function updateClosestStates() {
+    const box =
+      $("#closest-states") ||
+      $("#calc-closest-states") ||
+      $("[data-closest-states]");
+
+    if (!box) return;
+
+    const closest = Object.values(results)
+      .sort((a, b) => a.margin - b.margin)
+      .slice(0, 8);
+
+    box.innerHTML = closest
+      .map((r) => `
+        <div class="calc-mini-row">
+          <strong>${safeHTML(r.state_abbr)}</strong>
+          <span>${safeHTML(r.finalWinner.toUpperCase())} +${r.margin.toFixed(1)} • ${r.ev} EV</span>
+        </div>
+      `)
+      .join("");
+  }
+
+  function updatePathToVictory() {
+    const box =
+      $("#path-to-victory") ||
+      $("#calc-path-to-victory") ||
+      $("[data-path-to-victory]");
+
+    if (!box) return;
+
+    const totals = getTotals();
+
+    const rows = ["dnc", "gop", "other"].map((party) => {
+      const needed = Math.max(0, 270 - totals[party]);
+      return `
+        <div class="calc-mini-row">
+          <strong>${party.toUpperCase()}</strong>
+          <span>${needed === 0 ? "At / above 270" : `${needed} EV needed`}</span>
+        </div>
+      `;
+    });
+
+    box.innerHTML = rows.join("");
+  }
+
+  function buildControls() {
+    buildExperienceOptions();
+    buildLobbyToggles();
+    bindInputs();
+    bindButtons();
+    calculateAll();
+  }
+
+  function buildExperienceOptions() {
+    const selects = $$("select").filter((select) => {
+      const id = select.id.toLowerCase();
+      const name = clean(select.name).toLowerCase();
+      return id.includes("experience") || name.includes("experience");
+    });
+
+    selects.forEach((select) => {
+      const current = select.value;
+
+      select.innerHTML = experienceRows
+        .map((row) => `<option value="${safeHTML(row.id)}">${safeHTML(row.label)}</option>`)
+        .join("");
+
+      if (current) select.value = current;
+    });
+  }
+
+  function buildLobbyToggles() {
+    const containers = [
+      $("#lobby-toggles"),
+      $("#calc-lobbies"),
+      $("[data-lobby-toggles]")
+    ].filter(Boolean);
+
+    if (!containers.length) return;
+
+    const html = ["dnc", "gop", "other"]
+      .map((party) => `
+        <div class="calc-lobby-party">
+          <h4>${party.toUpperCase()} Lobbies</h4>
+          ${lobbyRows.map((lobby) => `
+            <label class="calc-check">
+              <input type="checkbox" data-lobby-party="${party}" value="${safeHTML(lobby.id)}">
+              <span>${safeHTML(lobby.name)} (+${lobby.shift})</span>
+            </label>
+          `).join("")}
+        </div>
+      `)
+      .join("");
+
+    containers.forEach((container) => {
+      container.innerHTML = html;
+    });
+  }
+
+  function bindInputs() {
+    document.addEventListener("input", handleInput);
+    document.addEventListener("change", handleInput);
+  }
+
+  function handleInput(event) {
+    const el = event.target;
+    if (!el) return;
+
+    const id = clean(el.id).toLowerCase();
+    const name = clean(el.name).toLowerCase();
+    const key = id || name;
+
+    if (key.includes("dnc") && key.includes("name")) state.candidates.dnc.name = el.value;
+    if (key.includes("gop") && key.includes("name")) state.candidates.gop.name = el.value;
+    if (key.includes("other") && key.includes("name")) state.candidates.other.name = el.value;
+
+    if (key.includes("dnc") && key.includes("experience")) state.candidates.dnc.experience = el.value;
+    if (key.includes("gop") && key.includes("experience")) state.candidates.gop.experience = el.value;
+    if (key.includes("other") && key.includes("experience")) state.candidates.other.experience = el.value;
+
+    ["dnc", "gop", "other"].forEach((party) => {
+      ["progressive", "liberal", "conservative", "nationalist", "libertarian", "populist"].forEach((ideology) => {
+        if (key.includes(party) && key.includes(ideology)) {
+          state.candidates[party].ideology[ideology] = toNumber(el.value, 0);
+        }
+      });
+
+      if (key.includes(party) && key.includes("pv")) {
+        state.national[`${party}PvLead`] = toNumber(el.value, 0);
+      }
+
+      if (key.includes(party) && key.includes("debuff")) {
+        state.national[`${party}Debuff`] = toNumber(el.value, 0);
+      }
+
+      if (key.includes(party) && key.includes("debate")) {
+        state.candidates[party].debateWins = toNumber(el.value, 0);
+      }
+
+      if (key.includes(party) && key.includes("primary")) {
+        state.candidates[party].primary = el.value;
+      }
+    });
+
+    if (key.includes("incumbent") && key.includes("party")) {
+      state.national.incumbentParty = el.value;
+    }
+
+    if (key.includes("incumbent") && key.includes("candidate")) {
+      state.national.incumbentCandidate = el.value;
+    }
+
+    if (key.includes("approval")) {
+      state.national.approvalGap = toNumber(el.value, 0);
+    }
+
+    if (el.matches("[data-lobby-party]")) {
+      const party = el.dataset.lobbyParty;
+      const id = el.value;
+
+      if (el.checked) {
+        if (!state.candidates[party].lobbies.includes(id)) {
+          state.candidates[party].lobbies.push(id);
+        }
+      } else {
+        state.candidates[party].lobbies = state.candidates[party].lobbies.filter((item) => item !== id);
+      }
+    }
+
+    if (el.matches("[data-campaign-state][data-campaign-party]")) {
+      const abbr = clean(el.dataset.campaignState).toUpperCase();
+      const party = clean(el.dataset.campaignParty).toLowerCase();
+
+      if (!state.campaignPoints[abbr]) {
+        state.campaignPoints[abbr] = { dnc: 0, gop: 0, other: 0 };
+      }
+
+      state.campaignPoints[abbr][party] = toNumber(el.value, 0);
+    }
+
+    calculateAll();
+  }
+
+  function bindButtons() {
+    $("#calc-save")?.addEventListener("click", saveLocal);
+    $("#save-local")?.addEventListener("click", saveLocal);
+    $("[data-save-local]")?.addEventListener("click", saveLocal);
+
+    $("#calc-export")?.addEventListener("click", exportJSON);
+    $("#export-json")?.addEventListener("click", exportJSON);
+    $("[data-export-json]")?.addEventListener("click", exportJSON);
+
+    $("#calc-import")?.addEventListener("click", importJSON);
+    $("#import-json")?.addEventListener("click", importJSON);
+    $("[data-import-json]")?.addEventListener("click", importJSON);
+
+    $("#calc-reset")?.addEventListener("click", resetCalculator);
+    $("#reset-calculator")?.addEventListener("click", resetCalculator);
+    $("[data-reset-calculator]")?.addEventListener("click", resetCalculator);
+  }
+
+  function saveLocal() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    alert("Calculator saved locally.");
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      Object.assign(state, parsed);
+    } catch (error) {
+      console.warn("Could not load local calculator state.", error);
+    }
+  }
+
+  function exportJSON() {
+    const payload = JSON.stringify(state, null, 2);
+    navigator.clipboard?.writeText(payload);
+    alert("Calculator JSON copied to clipboard.");
+  }
+
+  function importJSON() {
+    const raw = prompt("Paste calculator JSON:");
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw);
+      Object.assign(state, parsed);
+      calculateAll();
+      alert("Calculator imported.");
+    } catch {
+      alert("Invalid calculator JSON.");
+    }
+  }
+
+  function resetCalculator() {
+    if (!confirm("Reset calculator inputs?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+
+  function injectSupportStyles() {
+    if ($("#calc-support-style")) return;
 
     const style = document.createElement("style");
-    style.id = "aprp-election-calculator-style";
+    style.id = "calc-support-style";
     style.textContent = `
-      .calculator-shell {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 360px;
-        gap: 18px;
-        align-items: start;
-      }
-
-      .calculator-panel,
-      .calculator-map-card {
-        border: 1px solid rgba(15,23,42,.12);
-        border-radius: 24px;
-        background: rgba(255,255,255,.94);
-        box-shadow: 0 18px 42px rgba(15,23,42,.08);
-        padding: 16px;
-      }
-
-      .calculator-map-card {
-        background: linear-gradient(180deg, #13243d, #07111f);
-        color: #fff;
-      }
-
-      .calculator-toolbar {
+      .calc-mini-row {
         display: flex;
-        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(255,255,255,.12);
+      }
+
+      .calc-mini-row:last-child {
+        border-bottom: 0;
+      }
+
+      .calc-check {
+        display: flex;
         gap: 8px;
-        margin-bottom: 12px;
-      }
-
-      .calc-btn {
-        border: 1px solid rgba(255,255,255,.14);
-        border-radius: 999px;
-        background: rgba(255,255,255,.08);
-        color: #fff;
-        padding: 8px 12px;
-        font-size: .82rem;
-        font-weight: 950;
-        cursor: pointer;
-      }
-
-      .calc-btn.light {
-        background: #fff;
-        color: #0f172a;
-        border-color: rgba(15,23,42,.14);
-      }
-
-      .calc-btn.is-active {
-        background: #2563eb;
-        border-color: #60a5fa;
-        color: #fff;
-      }
-
-      .calc-btn.dnc.is-active {
-        background: #2563eb;
-      }
-
-      .calc-btn.gop.is-active {
-        background: #dc2626;
-      }
-
-      .calc-btn.ind.is-active {
-        background: #7c3aed;
-      }
-
-      .calc-btn.tossup.is-active {
-        background: #64748b;
-      }
-
-      #calculator-map {
-        height: 620px;
-        border-radius: 18px;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,.12);
-        background: #07111f;
-      }
-
-      .calculator-scoreboard {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 9px;
-        margin-bottom: 12px;
-      }
-
-      .calc-score {
-        border: 1px solid rgba(15,23,42,.10);
-        border-radius: 16px;
-        background: rgba(255,255,255,.86);
-        padding: 12px;
-      }
-
-      .calc-score strong {
-        display: block;
-        color: #0f172a;
-        font-size: 1.6rem;
-        font-weight: 1000;
-        line-height: 1;
-      }
-
-      .calc-score span {
-        display: block;
-        margin-top: 5px;
-        color: #64748b;
-        font-size: .7rem;
-        font-weight: 950;
-        letter-spacing: .10em;
-        text-transform: uppercase;
-      }
-
-      .calc-score.dnc {
-        border-color: rgba(37,99,235,.35);
-        background: rgba(37,99,235,.10);
-      }
-
-      .calc-score.gop {
-        border-color: rgba(220,38,38,.35);
-        background: rgba(220,38,38,.10);
-      }
-
-      .calc-score.ind {
-        border-color: rgba(124,58,237,.35);
-        background: rgba(124,58,237,.10);
-      }
-
-      .calculator-status {
-        border-radius: 18px;
-        padding: 14px;
-        background: linear-gradient(180deg, #13243d, #07111f);
-        color: #fff;
-        margin-bottom: 12px;
-      }
-
-      .calculator-status .eyebrow {
-        color: #93c5fd;
-      }
-
-      .calculator-status h3 {
-        margin: 5px 0 3px;
-        font-family: Georgia, serif;
-        font-size: 1.35rem;
-      }
-
-      .calculator-status p {
-        margin: 0;
-        color: #cbd5e1;
-        line-height: 1.35;
-      }
-
-      .calculator-state-list {
-        display: grid;
-        gap: 7px;
-        max-height: 500px;
-        overflow: auto;
-        padding-right: 4px;
-      }
-
-      .state-row {
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        gap: 7px;
         align-items: center;
-        border: 1px solid rgba(15,23,42,.10);
-        border-radius: 14px;
-        background: #fff;
-        padding: 9px;
+        padding: 6px 0;
+        font-weight: 800;
       }
 
-      .state-row strong {
-        color: #0f172a;
-        font-weight: 950;
+      .calc-lobby-party {
+        display: grid;
+        gap: 4px;
+        margin-bottom: 14px;
       }
 
-      .state-row span {
-        color: #64748b;
-        font-size: .78rem;
-        font-weight: 850;
-      }
-
-      .state-party-pill {
-        border-radius: 999px;
-        padding: 5px 8px;
-        color: #fff;
-        font-size: .72rem;
-        font-weight: 1000;
-        min-width: 58px;
-        text-align: center;
-      }
-
-      .state-row button {
-        border: 1px solid rgba(15,23,42,.14);
-        background: #fff;
-        color: #0f172a;
-        border-radius: 999px;
-        padding: 6px 9px;
-        cursor: pointer;
-        font-size: .72rem;
-        font-weight: 950;
-      }
-
-      .calculator-search {
-        width: 100%;
-        border: 1px solid rgba(15,23,42,.14);
-        border-radius: 14px;
-        padding: 10px 11px;
-        margin: 0 0 10px;
-        font-weight: 850;
-      }
-
-      .calc-selected-box {
-        border: 1px solid rgba(15,23,42,.10);
-        border-radius: 16px;
-        background: rgba(248,250,252,.92);
-        padding: 12px;
-        margin-bottom: 12px;
-      }
-
-      .calc-selected-box h3 {
-        margin: 4px 0 5px;
-        color: #0f172a;
-        font-family: Georgia, serif;
-      }
-
-      .calc-selected-box p {
-        margin: 0;
-        color: #64748b;
-      }
-
-      @media (max-width: 1150px) {
-        .calculator-shell {
-          grid-template-columns: 1fr;
-        }
-
-        #calculator-map {
-          height: 520px;
-        }
-
-        .calculator-scoreboard {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
-      @media (max-width: 700px) {
-        #calculator-map {
-          height: 420px;
-        }
-
-        .calculator-scoreboard {
-          grid-template-columns: 1fr;
-        }
+      .calc-lobby-party h4 {
+        margin: 0 0 4px;
       }
     `;
 
     document.head.appendChild(style);
   }
 
-  function colorExpression() {
-    const expression = ["match", ["get", "abbr"]];
+  async function init() {
+    try {
+      injectSupportStyles();
+      loadLocal();
+      await loadCalculatorData();
+      initMap();
+      buildControls();
+      calculateAll();
 
-    Object.entries(states).forEach(([abbr, stateStatus]) => {
-      expression.push(abbr, STATUS[stateStatus].color);
-    });
+      console.log("Election calculator loaded:", {
+        stateRows,
+        lobbyRows,
+        experienceRows,
+        rules
+      });
+    } catch (error) {
+      console.error("Election calculator failed:", error);
 
-    expression.push(STATUS.TOSSUP.color);
-    return expression;
-  }
-
-  function opacityExpression() {
-    const expression = ["match", ["get", "abbr"]];
-
-    Object.entries(states).forEach(([abbr, stateStatus]) => {
-      expression.push(abbr, stateStatus === "TOSSUP" ? 0.45 : 0.86);
-    });
-
-    expression.push(0.45);
-    return expression;
-  }
-
-  function updateMapPaint() {
-    if (!map || !map.getLayer("states-fill")) return;
-
-    map.setPaintProperty("states-fill", "fill-color", colorExpression());
-    map.setPaintProperty("states-fill", "fill-opacity", opacityExpression());
-  }
-
-  function setState(abbr, status) {
-    if (!EV_2012[abbr]) return;
-
-    states[abbr] = status;
-    selectedState = abbr;
-
-    updateMapPaint();
-    renderScores();
-    renderSelectedState();
-    renderStateList();
-  }
-
-  function cycleState(abbr) {
-    const current = states[abbr] || "TOSSUP";
-    const order = ["TOSSUP", "DNC", "GOP", "IND"];
-    const next = order[(order.indexOf(current) + 1) % order.length];
-
-    setState(abbr, next);
-  }
-
-  function renderScores() {
-    const dnc = totalFor("DNC");
-    const gop = totalFor("GOP");
-    const ind = totalFor("IND");
-    const tossup = tossupTotal();
-    const currentLeader = leader();
-
-    const scoreSlot = getEl("#calculator-scoreboard");
-    if (scoreSlot) {
-      scoreSlot.innerHTML = `
-        <div class="calc-score dnc">
-          <strong>${dnc}</strong>
-          <span>DNC EV</span>
-        </div>
-        <div class="calc-score gop">
-          <strong>${gop}</strong>
-          <span>GOP EV</span>
-        </div>
-        <div class="calc-score ind">
-          <strong>${ind}</strong>
-          <span>IND EV</span>
-        </div>
-        <div class="calc-score">
-          <strong>${tossup}</strong>
-          <span>Tossup EV</span>
-        </div>
-      `;
-    }
-
-    const statusSlot = getEl("#calculator-status");
-    if (statusSlot) {
-      const label = currentLeader === "TOSSUP" ? "No one has won yet" : `${STATUS[currentLeader].label} leading`;
-      const needed =
-        currentLeader === "TOSSUP"
-          ? `DNC needs ${neededToWin("DNC")}, GOP needs ${neededToWin("GOP")}.`
-          : `${STATUS[currentLeader].label} needs ${neededToWin(currentLeader)} more EV to reach 270.`;
-
-      statusSlot.innerHTML = `
-        <div class="eyebrow">Path to 270</div>
-        <h3>${safeHTML(label)}</h3>
-        <p>${safeHTML(needed)}</p>
-      `;
-    }
-
-    const hero = getEl("#calculator-hero-card");
-    if (hero) {
-      hero.innerHTML = `
-        <div class="eyebrow">Current Count</div>
-        <h2>DNC ${dnc} • GOP ${gop}</h2>
-        <p>IND ${ind} • Tossup ${tossup} • 270 to win.</p>
-      `;
+      const root = $("#calculator-root") || $("#election-calculator-root") || $("#main");
+      if (root) {
+        const warning = document.createElement("div");
+        warning.className = "notice notice-error";
+        warning.innerHTML = `
+          <strong>Election calculator failed to load.</strong>
+          <span>${safeHTML(error.message || String(error))}</span>
+        `;
+        root.prepend(warning);
+      }
     }
   }
 
-  function renderSelectedState() {
-    const slot = getEl("#calculator-selected-state");
-    if (!slot) return;
-
-    if (!selectedState) {
-      slot.innerHTML = `
-        <h3>Choose a state</h3>
-        <p>Click a state on the map or in the list to assign it.</p>
-      `;
-      return;
-    }
-
-    const status = states[selectedState];
-    slot.innerHTML = `
-      <h3>${safeHTML(STATE_NAMES[selectedState] || selectedState)}</h3>
-      <p>${safeHTML(EV_2012[selectedState])} electoral votes • ${safeHTML(STATUS[status].label)}</p>
-    `;
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
   }
-
-  function stateRow(abbr) {
-    const name = STATE_NAMES[abbr] || abbr;
-    const status = states[abbr] || "TOSSUP";
-
-    return `
-      <div class="state-row" data-state-row="${safeHTML(abbr)}">
-        <div>
-          <strong>${safeHTML(name)}</strong>
-          <span>${safeHTML(abbr)} • ${safeHTML(EV_2012[abbr])} EV</span>
-        </div>
-        <div class="state-party-pill" style="background:${safeHTML(STATUS[status].color)};">
-          ${safeHTML(STATUS[status].label)}
-        </div>
-        <button type="button" data-state-cycle="${safeHTML(abbr)}">Change</button>
-      </div>
-    `;
-  }
-
-  function renderStateList() {
-    const slot = getEl("#calculator-state-list");
-    if (!slot) return;
-
-    const search = cleanCell(getEl("#calculator-search")?.value || "").toLowerCase();
-
-    const abbrs = Object.keys(EV_2012)
-      .filter((abbr) => {
-        const name = STATE_NAMES[abbr] || abbr;
-        if (!search) return true;
-        return name.toLowerCase().includes(search) || abbr.toLowerCase().includes(search);
-      })
-      .sort((a, b) => (STATE_NAMES[a] || a).localeCompare(STATE_NAMES[b] || b));
-
-    slot.innerHTML = abbrs.map(stateRow).join("");
-
-    slot.querySelectorAll("[data-state-cycle]").forEach((button) => {
-      button.addEventListener("click", () => cycleState(button.dataset.stateCycle));
-    });
-
-    slot.querySelectorAll("[data-state-row]").forEach((row) => {
-      row.addEventListener("dblclick", () => {
-        const abbr = row.dataset.stateRow;
-        setState(abbr, currentPaint);
-      });
-    });
-  }
-
-  function resetMap() {
-    Object.keys(states).forEach((abbr) => {
-      states[abbr] = "TOSSUP";
-    });
-
-    selectedState = "";
-    updateMapPaint();
-    renderScores();
-    renderSelectedState();
-    renderStateList();
-  }
-
-  function copyMap() {
-    const dnc = Object.keys(states).filter((abbr) => states[abbr] === "DNC");
-    const gop = Object.keys(states).filter((abbr) => states[abbr] === "GOP");
-    const ind = Object.keys(states).filter((abbr) => states[abbr] === "IND");
-    const tossup = Object.keys(states).filter((abbr) => states[abbr] === "TOSSUP");
-
-    const text = [
-      "APRP Election Calculator",
-      `DNC: ${totalFor("DNC")} EV — ${dnc.join(", ") || "None"}`,
-      `GOP: ${totalFor("GOP")} EV — ${gop.join(", ") || "None"}`,
-      `IND: ${totalFor("IND")} EV — ${ind.join(", ") || "None"}`,
-      `TOSSUP: ${tossupTotal()} EV — ${tossup.join(", ") || "None"}`,
-    ].join("\n");
-
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        const btn = getEl("#calculator-copy");
-        if (!btn) return;
-        btn.textContent = "Copied";
-        setTimeout(() => {
-          btn.textContent = "Copy Map";
-        }, 1200);
-      })
-      .catch(() => {
-        const btn = getEl("#calculator-copy");
-        if (!btn) return;
-        btn.textContent = "Copy Failed";
-        setTimeout(() => {
-          btn.textContent = "Copy Map";
-        }, 1200);
-      });
-  }
-
-  function renderShell() {
-    const root = getEl("#election-calculator-root");
-    if (!root) return;
-
-    root.innerHTML = `
-      <div class="calculator-shell">
-        <section class="calculator-map-card">
-          <div class="calculator-toolbar">
-            <button class="calc-btn dnc is-active" type="button" data-paint="DNC">Paint DNC</button>
-            <button class="calc-btn gop" type="button" data-paint="GOP">Paint GOP</button>
-            <button class="calc-btn ind" type="button" data-paint="IND">Paint IND</button>
-            <button class="calc-btn tossup" type="button" data-paint="TOSSUP">Paint Tossup</button>
-            <button class="calc-btn" type="button" id="calculator-reset">Reset</button>
-            <button class="calc-btn" type="button" id="calculator-copy">Copy Map</button>
-          </div>
-
-          <div id="calculator-map"></div>
-        </section>
-
-        <aside class="calculator-panel">
-          <div id="calculator-scoreboard" class="calculator-scoreboard"></div>
-          <div id="calculator-status" class="calculator-status"></div>
-
-          <div id="calculator-selected-state" class="calc-selected-box"></div>
-
-          <input id="calculator-search" class="calculator-search" type="search" placeholder="Search states..." />
-
-          <div id="calculator-state-list" class="calculator-state-list"></div>
-        </aside>
-      </div>
-    `;
-
-    document.querySelectorAll("[data-paint]").forEach((button) => {
-      button.addEventListener("click", () => {
-        currentPaint = button.dataset.paint;
-
-        document.querySelectorAll("[data-paint]").forEach((btn) => {
-          btn.classList.toggle("is-active", btn.dataset.paint === currentPaint);
-        });
-      });
-    });
-
-    getEl("#calculator-reset")?.addEventListener("click", resetMap);
-    getEl("#calculator-copy")?.addEventListener("click", copyMap);
-    getEl("#calculator-search")?.addEventListener("input", renderStateList);
-
-    renderScores();
-    renderSelectedState();
-    renderStateList();
-  }
-
-  async function initMap() {
-    if (!window.mapboxgl) return;
-
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-
-    map = new mapboxgl.Map({
-      container: "calculator-map",
-      style: "mapbox://styles/mapbox/dark-v10",
-      center: [-98.5795, 39.8283],
-      zoom: window.innerWidth < 700 ? 2.35 : 3.05,
-      minZoom: 2,
-      maxZoom: 6,
-      attributionControl: false,
-    });
-
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
-
-    map.on("load", async () => {
-      const response = await fetch(US_STATES_GEOJSON_URL);
-      const geojson = await response.json();
-
-      geojson.features = geojson.features
-        .map((feature) => {
-          const abbr = stateAbbrFromFeature(feature);
-
-          return {
-            ...feature,
-            properties: {
-              ...feature.properties,
-              abbr,
-              ev: EV_2012[abbr] || 0,
-            },
-          };
-        })
-        .filter((feature) => feature.properties.abbr && EV_2012[feature.properties.abbr]);
-
-      geojsonCache = geojson;
-
-      map.addSource("states", {
-        type: "geojson",
-        data: geojsonCache,
-      });
-
-      map.addLayer({
-        id: "states-fill",
-        type: "fill",
-        source: "states",
-        paint: {
-          "fill-color": colorExpression(),
-          "fill-opacity": opacityExpression(),
-        },
-      });
-
-      map.addLayer({
-        id: "states-outline",
-        type: "line",
-        source: "states",
-        paint: {
-          "line-color": "rgba(255,255,255,.88)",
-          "line-width": 1.15,
-        },
-      });
-
-      map.on("click", "states-fill", (event) => {
-        const abbr = cleanCell(event.features?.[0]?.properties?.abbr);
-        if (!abbr) return;
-        setState(abbr, currentPaint);
-      });
-
-      map.on("mousemove", "states-fill", () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-
-      map.on("mouseleave", "states-fill", () => {
-        map.getCanvas().style.cursor = "";
-      });
-    });
-  }
-
-  function initCalculator() {
-    injectStyles();
-    renderShell();
-    initMap();
-  }
-
-  document.addEventListener("DOMContentLoaded", initCalculator);
 })();
