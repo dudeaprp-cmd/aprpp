@@ -2,68 +2,994 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+
   <title>Election Calculator | APRP Federal Archives</title>
-  <link rel="stylesheet" href="assets/css/app.css" />
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/css/app.css" />
+
+  <style>
+    .calculator-page {
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,.13), transparent 30%),
+        radial-gradient(circle at top right, rgba(185,28,28,.10), transparent 34%),
+        var(--paper, #f4efe6);
+    }
+
+    .calculator-hero {
+      padding-top: 74px;
+      padding-bottom: 26px;
+    }
+
+    .archive-home-return {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: fit-content;
+      margin-bottom: 14px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 950;
+      backdrop-filter: blur(10px);
+    }
+
+    .archive-home-return:hover,
+    .archive-home-return:focus {
+      background: rgba(255,255,255,.22);
+      outline: none;
+    }
+
+    .calculator-page-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .calculator-layout {
+      display: grid;
+      grid-template-columns: 380px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .calculator-sidebar {
+      position: sticky;
+      top: 86px;
+      display: grid;
+      gap: 14px;
+      max-height: calc(100vh - 100px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .calculator-main {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .calc-card {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: var(--radius-lg, 22px);
+      background: rgba(255,255,255,.88);
+      box-shadow: var(--shadow-soft, 0 18px 45px rgba(15,23,42,.08));
+      padding: 16px;
+    }
+
+    .calc-card.dark {
+      background:
+        linear-gradient(135deg, rgba(7,17,31,.98), rgba(13,28,51,.95)),
+        #07111f;
+      color: white;
+      border-color: rgba(255,255,255,.14);
+    }
+
+    .calc-card.dark p,
+    .calc-card.dark .text-small {
+      color: #cbd5e1;
+    }
+
+    .calc-card h2,
+    .calc-card h3 {
+      margin: 0 0 10px;
+      font-family: Georgia, serif;
+      color: var(--ink, #111827);
+      line-height: 1.05;
+    }
+
+    .calc-card.dark h2,
+    .calc-card.dark h3 {
+      color: white;
+    }
+
+    .calc-card p {
+      color: var(--muted, #64748b);
+      line-height: 1.45;
+    }
+
+    .calc-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .calc-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .calc-field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .calc-field label {
+      font-size: .68rem;
+      font-weight: 950;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--blue, #2563eb);
+    }
+
+    .calc-field input,
+    .calc-field select {
+      width: 100%;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 12px;
+      padding: 10px 11px;
+      font: inherit;
+      background: white;
+      color: var(--ink, #111827);
+      outline: none;
+    }
+
+    .calc-field input:focus,
+    .calc-field select:focus {
+      border-color: rgba(37,99,235,.55);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.13);
+    }
+
+    .calc-toggle-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .calc-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(255,255,255,.72);
+    }
+
+    .calc-toggle strong {
+      display: block;
+      font-size: .9rem;
+      color: var(--ink, #111827);
+    }
+
+    .calc-toggle span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted, #64748b);
+      font-size: .72rem;
+      line-height: 1.25;
+    }
+
+    .calc-toggle select {
+      min-width: 95px;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 999px;
+      padding: 7px 9px;
+      background: white;
+      font-weight: 850;
+    }
+
+    .candidate-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .candidate-tab {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 999px;
+      padding: 9px 10px;
+      background: white;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .candidate-tab.is-active[data-candidate="left"] {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+
+    .candidate-tab.is-active[data-candidate="right"] {
+      background: #dc2626;
+      color: white;
+      border-color: #dc2626;
+    }
+
+    .candidate-tab.is-active[data-candidate="other"] {
+      background: #7c3aed;
+      color: white;
+      border-color: #7c3aed;
+    }
+
+    .lobby-list,
+    .ideology-list,
+    .state-campaign-list {
+      display: grid;
+      gap: 8px;
+      max-height: 340px;
+      overflow: auto;
+      padding-right: 3px;
+    }
+
+    .lobby-item,
+    .ideology-item,
+    .state-campaign-item {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(255,255,255,.72);
+    }
+
+    .lobby-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .lobby-item strong,
+    .ideology-item strong,
+    .state-campaign-item strong {
+      display: block;
+      font-size: .86rem;
+      color: var(--ink, #111827);
+    }
+
+    .lobby-item span,
+    .ideology-item span,
+    .state-campaign-item span {
+      display: block;
+      color: var(--muted, #64748b);
+      font-size: .7rem;
+      line-height: 1.25;
+      margin-top: 2px;
+    }
+
+    .lobby-item select {
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 999px;
+      padding: 7px 9px;
+      background: white;
+      font-weight: 850;
+    }
+
+    .ideology-control {
+      display: grid;
+      grid-template-columns: 1fr 76px;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .ideology-control input {
+      width: 100%;
+      accent-color: #2563eb;
+    }
+
+    .ideology-control output {
+      text-align: center;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #1e3a8a;
+      padding: 5px 7px;
+      font-size: .76rem;
+      font-weight: 950;
+    }
+
+    .state-campaign-item {
+      display: grid;
+      grid-template-columns: 1fr 92px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .state-campaign-item input {
+      width: 100%;
+      border: 1px solid var(--border, rgba(15,23,42,.12));
+      border-radius: 999px;
+      padding: 7px 9px;
+      background: white;
+      font-weight: 850;
+    }
+
+    .calculator-map-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 12px;
+      min-height: 620px;
+      border-radius: 24px;
+      padding: 14px;
+      background: linear-gradient(180deg, #13243d, #07111f);
+      box-shadow: 0 18px 42px rgba(15,23,42,.14);
+      overflow: hidden;
+    }
+
+    #calculator-map {
+      min-height: 590px;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #0b1728;
+    }
+
+    .calculator-map-side {
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 18px;
+      background: rgba(255,255,255,.08);
+      color: white;
+      padding: 14px;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .ev-score-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .ev-score {
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    .ev-score strong {
+      display: block;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .ev-score span {
+      display: block;
+      margin-top: 5px;
+      color: #cbd5e1;
+      font-size: .68rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .ev-score.left {
+      border-left: 5px solid #2563eb;
+    }
+
+    .ev-score.right {
+      border-left: 5px solid #dc2626;
+    }
+
+    .ev-score.other {
+      border-left: 5px solid #7c3aed;
+    }
+
+    .map-mode-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .map-mode-buttons button,
+    .calculator-actions button,
+    .calculator-actions a {
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px;
+      padding: 8px 11px;
+      background: rgba(255,255,255,.10);
+      color: white;
+      font-weight: 950;
+      font-size: .76rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .map-mode-buttons button.is-active {
+      background: #2563eb;
+      border-color: rgba(147,197,253,.5);
+    }
+
+    .calculator-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .calculator-actions .danger {
+      background: #dc2626;
+    }
+
+    .selected-state-box,
+    .closest-box,
+    .path-box {
+      border-radius: 14px;
+      padding: 11px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    .selected-state-box h3,
+    .closest-box h3,
+    .path-box h3 {
+      margin: 0 0 8px;
+      color: white;
+      font-family: Georgia, serif;
+      font-size: 1.1rem;
+    }
+
+    .selected-state-box p,
+    .closest-box p,
+    .path-box p {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: .82rem;
+      line-height: 1.4;
+    }
+
+    .result-list {
+      display: grid;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding-bottom: 6px;
+      color: #dbeafe;
+      font-size: .78rem;
+      font-weight: 850;
+    }
+
+    .calculator-notice {
+      border: 1px solid rgba(37,99,235,.18);
+      border-radius: 18px;
+      background: rgba(37,99,235,.07);
+      padding: 13px;
+      color: var(--muted, #64748b);
+      line-height: 1.45;
+    }
+
+    .calculator-notice strong {
+      color: var(--ink, #111827);
+    }
+
+    @media (max-width: 1180px) {
+      .calculator-layout,
+      .calculator-map-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .calculator-sidebar {
+        position: static;
+        max-height: none;
+        overflow: visible;
+      }
+
+      #calculator-map {
+        min-height: 470px;
+      }
+
+      .calculator-map-shell {
+        min-height: 0;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .archive-home-return {
+        width: 100%;
+      }
+
+      .hero-actions .btn,
+      .calculator-page-links .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .calc-grid-2,
+      .calc-grid-3,
+      .candidate-tabs,
+      .ev-score-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .lobby-item,
+      .state-campaign-item {
+        grid-template-columns: 1fr;
+      }
+
+      #calculator-map {
+        min-height: 390px;
+      }
+    }
+  </style>
 </head>
-<body>
-  <header class="page-header">
-    <nav class="topbar">
-      <a class="brand" href="index.html">
-        <span class="brand-seal">A</span>
-        <span>
-          <span class="brand-kicker">APRP Archives</span>
-          <strong>Office of Records</strong>
-        </span>
-      </a>
 
-      <div class="desktop-nav">
-        <a href="index.html">Home</a>
-        <a href="government.html">Government</a>
-        <a href="economy.html">Economy</a>
-        <a href="timeline.html">Timeline</a>
-        <a href="elections.html">Elections</a>
-        <a class="nav-live" href="live-results.html">Live Results</a>
+<body class="calculator-page">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="page-shell compact-page">
+    <header class="site-header" data-collapsing-header>
+      <div class="header-inner">
+        <a class="brand" href="./index.html" aria-label="APRP Federal Archives home">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">
+            <span class="brand-kicker">APRP Archives</span>
+            <span class="brand-title">Election Calculator</span>
+          </span>
+        </a>
+
+        <nav class="primary-nav" data-aprp-nav aria-label="Primary navigation"></nav>
       </div>
-    </nav>
-  </header>
+    </header>
 
-  <main class="page-shell">
-    <a class="back-home-btn" href="index.html">← Archive Home</a>
+    <section class="archive-hero compact calculator-hero">
+      <div class="hero-content">
+        <div>
+          <a class="archive-home-return" href="./index.html">← Archive Home</a>
 
-    <section class="section-card">
-      <p class="eyebrow blue">Prediction Lab</p>
-      <h1>Electoral College Calculator</h1>
-      <p>
-        Build custom election predictions using lobbies, ideology, campaign points,
-        approval, experience, and state leans.
-      </p>
+          <div class="hero-kicker">Prediction Lab</div>
+          <h1 class="hero-title">Electoral Calculator</h1>
+          <p class="hero-subtitle">
+            Build a custom APRP election map using state leans, lobbies, ideology,
+            campaign points, approval, debates, experience, and national environment.
+          </p>
 
-      <div class="page-link-grid">
-        <a href="live-results.html">Live Results</a>
-        <a href="elections.html">Hall of Elections</a>
-        <a href="government.html">Government</a>
+          <div class="hero-actions">
+            <a class="btn btn-blue" href="#calculator-map-section">Open Map</a>
+            <a class="btn btn-outline" href="#candidate-setup">Candidate Setup</a>
+            <a class="btn btn-outline" href="./live-results.html">Live Results</a>
+          </div>
+
+          <div class="calculator-page-links">
+            <a class="btn btn-small btn-outline" href="./government.html">Government</a>
+            <a class="btn btn-small btn-outline" href="./economy.html">Economy</a>
+            <a class="btn btn-small btn-outline" href="./timeline.html">Timeline</a>
+            <a class="btn btn-small btn-outline" href="./hall-of-presidents.html">Presidents</a>
+            <a class="btn btn-small btn-outline" href="./elections.html">Elections</a>
+            <a class="btn btn-small btn-outline" href="./president-tierlist.html">Tier List</a>
+          </div>
+        </div>
+
+        <aside class="hero-side-card">
+          <div class="eyebrow">Local Tool</div>
+          <h2>Player-Side Prediction</h2>
+          <p>
+            Calculator results save locally in the browser and do not alter official archive records.
+          </p>
+        </aside>
       </div>
     </section>
 
-    <section class="section-card">
-      <div class="section-heading">
-        <p class="eyebrow blue">Interactive Map</p>
-        <h2>Custom Prediction Map</h2>
-      </div>
+    <main id="main">
+      <section class="section section-tight">
+        <div class="container-wide">
+          <div class="calculator-notice">
+            <strong>Data Sources:</strong>
+            This page reads <code>CALC_STATE_BASELINES</code>, <code>CALC_LOBBIES</code>,
+            <code>CALC_EXPERIENCE</code>, and <code>CALC_RULES</code>. State baselines and ideology
+            multipliers control the map; lobbies and toggles apply national or state-specific shifts.
+          </div>
+        </div>
+      </section>
 
-      <div class="map-placeholder">
-        Election calculator map loads here.
-      </div>
-    </section>
-  </main>
+      <section class="section section-tight" id="calculator-map-section">
+        <div class="container-wide calculator-map-shell">
+          <div id="calculator-map"></div>
 
-  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-    <a href="index.html">Home</a>
-    <a href="government.html">Gov</a>
-    <a href="economy.html">Econ</a>
-    <a href="hall-of-presidents.html">Pres</a>
-    <a href="live-results.html">Live</a>
-  </nav>
+          <aside class="calculator-map-side">
+            <div>
+              <div class="eyebrow">Electoral Vote</div>
+              <h2>Prediction Result</h2>
+            </div>
+
+            <div class="ev-score-grid">
+              <div class="ev-score left">
+                <strong id="calc-left-ev">0</strong>
+                <span id="calc-left-label">DNC</span>
+              </div>
+
+              <div class="ev-score right">
+                <strong id="calc-right-ev">0</strong>
+                <span id="calc-right-label">GOP</span>
+              </div>
+
+              <div class="ev-score other">
+                <strong id="calc-other-ev">0</strong>
+                <span id="calc-other-label">Other</span>
+              </div>
+            </div>
+
+            <div class="map-mode-buttons" aria-label="Calculator map modes">
+              <button type="button" class="is-active" data-calc-map-mode="winner">Winner</button>
+              <button type="button" data-calc-map-mode="margin">Margin</button>
+              <button type="button" data-calc-map-mode="campaign">Campaign</button>
+              <button type="button" data-calc-map-mode="ideology">Ideology</button>
+            </div>
+
+            <div class="calculator-actions">
+              <button type="button" id="calc-save-button">Save Local</button>
+              <button type="button" id="calc-export-button">Export JSON</button>
+              <button type="button" id="calc-import-button">Import JSON</button>
+              <button type="button" class="danger" id="calc-reset-button">Reset</button>
+            </div>
+
+            <div class="selected-state-box" id="calc-selected-state">
+              <h3>Choose a State</h3>
+              <p>Tap or click a state to view baseline lean, applied shifts, final result, and EV allocation.</p>
+            </div>
+
+            <div class="closest-box">
+              <h3>Closest States</h3>
+              <div class="result-list" id="calc-closest-states">
+                <div class="result-row"><span>Loading</span><strong>—</strong></div>
+              </div>
+            </div>
+
+            <div class="path-box">
+              <h3>Path to Victory</h3>
+              <div class="result-list" id="calc-path-to-victory">
+                <div class="result-row"><span>Loading</span><strong>—</strong></div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section section-tight">
+        <div class="container-wide calculator-layout">
+          <aside class="calculator-sidebar">
+            <section class="calc-card" id="candidate-setup">
+              <div class="eyebrow">Candidate Setup</div>
+              <h3>Campaign Profiles</h3>
+
+              <div class="candidate-tabs">
+                <button type="button" class="candidate-tab is-active" data-candidate="left">DNC</button>
+                <button type="button" class="candidate-tab" data-candidate="right">GOP</button>
+                <button type="button" class="candidate-tab" data-candidate="other">Other</button>
+              </div>
+
+              <div class="calc-grid-2">
+                <div class="calc-field">
+                  <label for="calc-left-name">DNC Name</label>
+                  <input id="calc-left-name" data-calc-name="left" type="text" value="Democratic Candidate" />
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-right-name">GOP Name</label>
+                  <input id="calc-right-name" data-calc-name="right" type="text" value="Republican Candidate" />
+                </div>
+              </div>
+
+              <div class="calc-field">
+                <label for="calc-other-name">Other Name</label>
+                <input id="calc-other-name" data-calc-name="other" type="text" value="Independent Candidate" />
+              </div>
+
+              <div class="calc-grid-3">
+                <div class="calc-field">
+                  <label for="calc-left-experience">DNC Experience</label>
+                  <select id="calc-left-experience" data-calc-experience="left"></select>
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-right-experience">GOP Experience</label>
+                  <select id="calc-right-experience" data-calc-experience="right"></select>
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-other-experience">Other Experience</label>
+                  <select id="calc-other-experience" data-calc-experience="other"></select>
+                </div>
+              </div>
+            </section>
+
+            <section class="calc-card">
+              <div class="eyebrow">National Environment</div>
+              <h3>Global Shifts</h3>
+
+              <div class="calc-grid-2">
+                <div class="calc-field">
+                  <label for="calc-incumbent-party">Incumbent Party</label>
+                  <select id="calc-incumbent-party">
+                    <option value="">None</option>
+                    <option value="left">DNC</option>
+                    <option value="right">GOP</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-incumbent-candidate">Incumbent Candidate?</label>
+                  <select id="calc-incumbent-candidate">
+                    <option value="">No</option>
+                    <option value="left">DNC</option>
+                    <option value="right">GOP</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="calc-grid-3">
+                <div class="calc-field">
+                  <label for="calc-left-pv-lead">DNC PV Lead</label>
+                  <input id="calc-left-pv-lead" data-calc-pv="left" type="number" step="0.1" value="0" />
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-right-pv-lead">GOP PV Lead</label>
+                  <input id="calc-right-pv-lead" data-calc-pv="right" type="number" step="0.1" value="0" />
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-other-pv-lead">Other PV Lead</label>
+                  <input id="calc-other-pv-lead" data-calc-pv="other" type="number" step="0.1" value="0" />
+                </div>
+              </div>
+
+              <div class="calc-grid-3">
+                <div class="calc-field">
+                  <label for="calc-left-debuff">DNC Debuff</label>
+                  <input id="calc-left-debuff" data-calc-debuff="left" type="number" step="0.1" value="0" />
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-right-debuff">GOP Debuff</label>
+                  <input id="calc-right-debuff" data-calc-debuff="right" type="number" step="0.1" value="0" />
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-other-debuff">Other Debuff</label>
+                  <input id="calc-other-debuff" data-calc-debuff="other" type="number" step="0.1" value="0" />
+                </div>
+              </div>
+
+              <div class="calc-grid-3">
+                <div class="calc-field">
+                  <label for="calc-left-debates">DNC Debate Wins</label>
+                  <input id="calc-left-debates" data-calc-debates="left" type="number" min="0" step="1" value="0" />
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-right-debates">GOP Debate Wins</label>
+                  <input id="calc-right-debates" data-calc-debates="right" type="number" min="0" step="1" value="0" />
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-other-debates">Other Debate Wins</label>
+                  <input id="calc-other-debates" data-calc-debates="other" type="number" min="0" step="1" value="0" />
+                </div>
+              </div>
+            </section>
+
+            <section class="calc-card">
+              <div class="eyebrow">Primary Strength</div>
+              <h3>Nomination Result</h3>
+
+              <div class="calc-grid-3">
+                <div class="calc-field">
+                  <label for="calc-left-primary">DNC Primary</label>
+                  <select id="calc-left-primary" data-calc-primary="left">
+                    <option value="contested">Contested</option>
+                    <option value="80plus">80%+</option>
+                    <option value="unopposed">Unopposed</option>
+                  </select>
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-right-primary">GOP Primary</label>
+                  <select id="calc-right-primary" data-calc-primary="right">
+                    <option value="contested">Contested</option>
+                    <option value="80plus">80%+</option>
+                    <option value="unopposed">Unopposed</option>
+                  </select>
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-other-primary">Other Primary</label>
+                  <select id="calc-other-primary" data-calc-primary="other">
+                    <option value="contested">Contested</option>
+                    <option value="80plus">80%+</option>
+                    <option value="unopposed">Unopposed</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section class="calc-card">
+              <div class="eyebrow">Lobby Selector</div>
+              <h3>Endorsements & PACs</h3>
+              <p class="text-small">
+                Lobby bonuses come from CALC_LOBBIES and can apply nationally or to listed states.
+              </p>
+
+              <div class="lobby-list" id="calc-lobby-list">
+                <div class="lobby-item">
+                  <div>
+                    <strong>Loading lobbies...</strong>
+                    <span>Reading CALC_LOBBIES.</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </aside>
+
+          <section class="calculator-main">
+            <section class="calc-card">
+              <div class="eyebrow">Ideology Strength</div>
+              <h2>Candidate Ideology Allocation</h2>
+              <p>
+                Each candidate starts with base ideology points from CALC_RULES, then gains additional points
+                from selected lobbies. Higher values perform better in states with matching multipliers.
+              </p>
+
+              <div class="candidate-tabs">
+                <button type="button" class="candidate-tab is-active" data-ideology-candidate="left">DNC</button>
+                <button type="button" class="candidate-tab" data-ideology-candidate="right">GOP</button>
+                <button type="button" class="candidate-tab" data-ideology-candidate="other">Other</button>
+              </div>
+
+              <div class="ideology-list" id="calc-ideology-list">
+                <div class="ideology-item">
+                  <strong>Progressive</strong>
+                  <span>Adjust strength allocation.</span>
+                  <div class="ideology-control">
+                    <input type="range" min="0" max="100" value="0" data-ideology="progressive" />
+                    <output>0</output>
+                  </div>
+                </div>
+
+                <div class="ideology-item">
+                  <strong>Liberal</strong>
+                  <span>Adjust strength allocation.</span>
+                  <div class="ideology-control">
+                    <input type="range" min="0" max="100" value="0" data-ideology="liberal" />
+                    <output>0</output>
+                  </div>
+                </div>
+
+                <div class="ideology-item">
+                  <strong>Conservative</strong>
+                  <span>Adjust strength allocation.</span>
+                  <div class="ideology-control">
+                    <input type="range" min="0" max="100" value="0" data-ideology="conservative" />
+                    <output>0</output>
+                  </div>
+                </div>
+
+                <div class="ideology-item">
+                  <strong>Nationalist</strong>
+                  <span>Adjust strength allocation.</span>
+                  <div class="ideology-control">
+                    <input type="range" min="0" max="100" value="0" data-ideology="nationalist" />
+                    <output>0</output>
+                  </div>
+                </div>
+
+                <div class="ideology-item">
+                  <strong>Libertarian</strong>
+                  <span>Adjust strength allocation.</span>
+                  <div class="ideology-control">
+                    <input type="range" min="0" max="100" value="0" data-ideology="libertarian" />
+                    <output>0</output>
+                  </div>
+                </div>
+
+                <div class="ideology-item">
+                  <strong>Populist</strong>
+                  <span>Adjust strength allocation.</span>
+                  <div class="ideology-control">
+                    <input type="range" min="0" max="100" value="0" data-ideology="populist" />
+                    <output>0</output>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="calc-card">
+              <div class="eyebrow">Campaign Inputs</div>
+              <h2>State Campaign Points</h2>
+              <p>
+                Campaign points shift a state by CALC_RULES campaign_point_shift. Convention, VP,
+                and home-state bonuses are also treated as points.
+              </p>
+
+              <div class="candidate-tabs">
+                <button type="button" class="candidate-tab is-active" data-campaign-candidate="left">DNC</button>
+                <button type="button" class="candidate-tab" data-campaign-candidate="right">GOP</button>
+                <button type="button" class="candidate-tab" data-campaign-candidate="other">Other</button>
+              </div>
+
+              <div class="calc-grid-3">
+                <div class="calc-field">
+                  <label for="calc-convention-state">Convention State</label>
+                  <select id="calc-convention-state" data-special-state="convention"></select>
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-vp-state">VP Bonus State</label>
+                  <select id="calc-vp-state" data-special-state="vp"></select>
+                </div>
+
+                <div class="calc-field">
+                  <label for="calc-home-state">Home State</label>
+                  <select id="calc-home-state" data-special-state="home"></select>
+                </div>
+              </div>
+
+              <div class="state-campaign-list" id="calc-state-campaign-list">
+                <div class="state-campaign-item">
+                  <div>
+                    <strong>Loading states...</strong>
+                    <span>Reading CALC_STATE_BASELINES.</span>
+                  </div>
+                  <input type="number" value="0" disabled />
+                </div>
+              </div>
+            </section>
+
+            <section class="calc-card dark">
+              <div class="eyebrow">Methodology</div>
+              <h2>How the Calculator Works</h2>
+              <p>
+                Every state begins with a Republican, Democrat, and Other baseline from CALC_STATE_BASELINES.
+                National modifiers, lobbies, candidate experience, primary strength, debate wins, campaign
+                points, approval environment, and ideology multipliers are then applied. Results are normalized
+                back to 100 percent and EVs are awarded by state winner.
+              </p>
+            </section>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>APRP Federal Archives</strong>
+          <div class="text-small">Election calculator generated from public calculator rules and state baselines.</div>
+        </div>
+        <div class="text-small">Prediction Lab</div>
+      </div>
+    </footer>
+
+    <nav class="mobile-bottom-nav" data-mobile-nav aria-label="Mobile navigation"></nav>
+  </div>
+
+  <script src="./assets/js/sheets.js"></script>
+  <script src="./assets/js/shared.js"></script>
+  <script src="./assets/js/election-calculator.js"></script>
 </body>
 </html>
