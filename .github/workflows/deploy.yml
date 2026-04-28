@@ -1,22 +1,23 @@
 name: Deploy to GitHub Pages
-
+ 
 on:
   push:
     branches: [main]
-
+ 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
+      - uses: actions/checkout@v4
+ 
       - name: Inject Mapbox Token
         run: |
           find public -name "*.html" -o -name "*.js" | xargs sed -i \
             "s/YOUR_MAPBOX_TOKEN_HERE/${{ secrets.MAPBOX_TOKEN }}/g"
-
+ 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
+ 
