@@ -29,8 +29,8 @@
 
   function keyForFile(file) {
     const map = {
-      "index.html": "home",
       "": "home",
+      "index.html": "home",
       "government.html": "government",
       "economy.html": "economy",
       "timeline.html": "timeline",
@@ -44,24 +44,23 @@
     return map[file] || "";
   }
 
-  function createNavLink(item, currentKey, extraClass = "") {
+  function createNavLink(item, currentKey, baseClass) {
     const a = document.createElement("a");
     a.href = item.href;
     a.textContent = item.label;
 
-    const classes = [];
-    if (extraClass) classes.push(extraClass);
-    if (item.live) classes.push("is-live");
-    if (item.key === currentKey) classes.push("is-active");
+    const classes = [baseClass];
 
-    if (classes.length) {
-      a.className = classes.join(" ");
+    if (item.live) {
+      classes.push("is-live");
     }
 
     if (item.key === currentKey) {
+      classes.push("is-active");
       a.setAttribute("aria-current", "page");
     }
 
+    a.className = classes.join(" ");
     return a;
   }
 
@@ -73,7 +72,7 @@
       nav.innerHTML = "";
 
       NAV_ITEMS.forEach((item) => {
-        nav.appendChild(createNavLink(item, currentKey));
+        nav.appendChild(createNavLink(item, currentKey, "nav-link"));
       });
     });
   }
@@ -86,7 +85,7 @@
       nav.innerHTML = "";
 
       MOBILE_ITEMS.forEach((item) => {
-        nav.appendChild(createNavLink(item, currentKey));
+        nav.appendChild(createNavLink(item, currentKey, "mobile-nav-link"));
       });
     });
   }
@@ -109,7 +108,9 @@
 
   function addBodyClassForPage() {
     const key = keyForFile(getCurrentFile());
-    if (key) document.body.classList.add(`page-${key}`);
+    if (key) {
+      document.body.classList.add(`page-${key}`);
+    }
   }
 
   function initShared() {
@@ -129,6 +130,8 @@
     NAV_ITEMS,
     MOBILE_ITEMS,
     getCurrentFile,
-    keyForFile
+    keyForFile,
+    renderPrimaryNav,
+    renderMobileNav
   };
 })();
