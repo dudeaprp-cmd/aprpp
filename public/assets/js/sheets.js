@@ -432,3 +432,110 @@ window.APRP = {
   showError,
   showLoading,
 };
+(function () {
+  "use strict";
+
+  const existing = window.APRP_SHEETS || {};
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const next = text[i + 1];
+
+      if (char === '"' && inQuotes && next === '"') {
+        cell += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === "," && !inQuotes) {
+        row.push(cell);
+        cell = "";
+      } else if ((char === "\n" || char === "\r") && !inQuotes) {
+        if (char === "\r" && next === "\n") i++;
+        row.push(cell);
+
+        if (row.some((value) => String(value).trim() !== "")) {
+          rows.push(row);
+        }
+
+        row = [];
+        cell = "";
+      } else {
+        cell += char;
+      }
+    }
+
+    row.push(cell);
+    if (row.some((value) => String(value).trim() !== "")) {
+      rows.push(row);
+    }
+
+    return rows;
+  }
+
+  function rowsToObjects(rows) {
+    if (!rows.length) return [];
+
+    const headers = rows[0].map((header) =>
+      String(header || "")
+        .trim()
+        .replace(/\s+/g, "_")
+        .toLowerCase()
+    );
+
+    return rows.slice(1).map((row) => {
+      const obj = {};
+
+      headers.forEach((header, index) => {
+        obj[header] = String(row[index] ?? "").trim();
+      });
+
+      return obj;
+    });
+  }
+
+  async function loadSheet(sheetName) {
+    const url = existing[sheetName];
+
+    if (!url) {
+      throw new Error(`No sheet URL configured for ${sheetName}`);
+    }
+
+    const cacheBust = url.includes("?") ? `&v=${Date.now()}` : `?v=${Date.now()}`;
+    const response = await fetch(url + cacheBust, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${sheetName}: ${response.status}`);
+    }
+
+    const text = await response.text();
+    const rows = parseCSV(text);
+    return rowsToObjects(rows);
+  }
+
+  async function loadSheets(sheetNames) {
+    const entries = await Promise.all(
+      sheetNames.map(async (name) => {
+        const rows = await loadSheet(name);
+        return [name, rows];
+      })
+    );
+
+    return Object.fromEntries(entries);
+  }
+
+  window.APRP_SHEETS = {
+    ...existing,
+    loadSheet,
+    loadSheets,
+    parseCSV,
+    rowsToObjects
+  };
+})();
