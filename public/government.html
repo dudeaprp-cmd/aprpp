@@ -2,195 +2,101 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-
-  <title>Government Directory | APRP Federal Archives</title>
-  <meta
-    name="description"
-    content="APRP government directory with leadership, regions, governors, senators, representatives, and party strength."
-  />
-
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="./assets/css/app.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Government | APRP Federal Archives</title>
+  <link rel="stylesheet" href="assets/css/app.css" />
 </head>
-
 <body>
-  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="page-header">
+    <nav class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-seal">A</span>
+        <span>
+          <span class="brand-kicker">APRP Archives</span>
+          <strong>Office of Records</strong>
+        </span>
+      </a>
 
-  <div class="page-shell compact-page">
-    <header class="site-header" data-collapsing-header>
-      <div class="header-inner">
-        <a class="brand" href="./index.html" aria-label="APRP Federal Archives home">
-          <span class="brand-mark">A</span>
-          <span class="brand-text">
-            <span class="brand-kicker">APRP Archives</span>
-            <span class="brand-title">Government Directory</span>
-          </span>
-        </a>
-
-        <nav class="primary-nav" data-aprp-nav aria-label="Primary navigation"></nav>
+      <div class="desktop-nav">
+        <a href="index.html">Home</a>
+        <a href="economy.html">Economy</a>
+        <a href="timeline.html">Timeline</a>
+        <a href="hall-of-presidents.html">Presidents</a>
+        <a href="elections.html">Elections</a>
+        <a class="nav-live" href="live-results.html">Live Results</a>
       </div>
-    </header>
+    </nav>
+  </header>
 
-    <section class="archive-hero compact gov-hero-tight">
-      <div class="hero-content">
-        <div>
-          <div class="hero-kicker">Federal & Regional Structure</div>
-          <h1 class="hero-title">Government Directory</h1>
-          <p class="hero-subtitle">
-            Interactive record of APRP regions, governors, senators, representatives,
-            leadership, and weighted party strength.
-          </p>
+  <main class="page-shell">
+    <a class="back-home-btn" href="index.html">← Archive Home</a>
 
-          <div class="hero-actions">
-            <a class="btn btn-blue" href="#government-map">Open Map</a>
-            <a class="btn btn-outline" href="#leadership">Leadership</a>
-            <a class="btn btn-outline" href="#regions">Regions</a>
-          </div>
-        </div>
+    <section class="section-card">
+      <p class="eyebrow blue">Federal & Regional Structure</p>
+      <h1>Government Directory</h1>
+      <p>
+        Interactive record of federal leadership, APRP regions, governors, senators,
+        representatives, and regional party strength.
+      </p>
 
-        <aside class="hero-side-card">
-          <div class="eyebrow">Source</div>
-          <h2>Public Records Sheet</h2>
-          <p>Government data loads from the published APRP archive sheets.</p>
-        </aside>
+      <div class="page-link-grid">
+        <a href="economy.html">Economy</a>
+        <a href="timeline.html">Timeline</a>
+        <a href="hall-of-presidents.html">Presidents</a>
+        <a href="elections.html">Elections</a>
+        <a href="live-results.html">Live Results</a>
       </div>
     </section>
 
-    <main id="main">
-      <section class="section-tight">
-        <div class="container" id="government-notice"></div>
-      </section>
-
-      <!-- MAP MOVED TO TOP -->
-      <section class="section section-tight" id="government-map">
-        <div class="container-wide">
-          <div class="section-header compact-section-header">
-            <div>
-              <div class="eyebrow">Interactive Government Map</div>
-              <h2 class="section-title">State & Region Map</h2>
-              <p class="section-subtitle">
-                Switch between regions, weighted party strength, districts, Senate control, and governors.
-              </p>
-            </div>
-          </div>
-
-          <div class="map-shell gov-map-shell-dark">
-            <section class="panel map-panel gov-map-panel-dark">
-              <div class="map-mode-buttons gov-map-mode-buttons" role="group" aria-label="Map mode">
-                <button type="button" class="is-active" data-map-mode="region">Region</button>
-                <button type="button" data-map-mode="strength">Strength</button>
-                <button type="button" data-map-mode="district">Districts</button>
-                <button type="button" data-map-mode="senate">Senate</button>
-                <button type="button" data-map-mode="governor">Governors</button>
-              </div>
-
-              <div class="map-frame gov-map-frame-dark" id="map-frame">
-                <div id="government-mapbox"></div>
-              </div>
-            </section>
-
-            <aside class="panel state-detail gov-state-detail-dark" id="state-detail">
-              <div class="eyebrow">Selected State</div>
-              <h3>Choose a state</h3>
-              <p>
-                Click a state to view its region, governor, senators with classes,
-                representative, and party strength score.
-              </p>
-            </aside>
-          </div>
-        </div>
-      </section>
-
-      <!-- BALANCE / LEADERSHIP AFTER MAP -->
-      <section class="section section-tight" id="leadership">
-        <div class="container">
-          <div class="section-header compact-section-header">
-            <div>
-              <div class="eyebrow">Balance of Power</div>
-              <h2 class="section-title">Control of Government</h2>
-              <p class="section-subtitle">
-                Party balance across executive, Senate, House, and governors.
-              </p>
-            </div>
-          </div>
-
-          <div class="grid grid-4 compact-card-grid">
-            <article class="card compact-card">
-              <div class="eyebrow">Executive</div>
-              <h3 id="exec-title">Executive Branch</h3>
-              <p id="exec-summary">Loading executive leadership...</p>
-            </article>
-
-            <article class="card compact-card">
-              <div class="eyebrow">Senate</div>
-              <h3>Senate Control</h3>
-              <div id="senate-bar" class="mt-2"></div>
-            </article>
-
-            <article class="card compact-card">
-              <div class="eyebrow">House</div>
-              <h3>House Control</h3>
-              <div id="house-bar" class="mt-2"></div>
-            </article>
-
-            <article class="card compact-card">
-              <div class="eyebrow">Governors</div>
-              <h3>Governor Control</h3>
-              <div id="governor-bar" class="mt-2"></div>
-            </article>
-          </div>
-
-          <div class="section-tight">
-            <div class="section-header compact-section-header">
-              <div>
-                <div class="eyebrow">Federal Leadership</div>
-                <h2 class="section-title">Leadership Roster</h2>
-              </div>
-            </div>
-
-            <div class="grid grid-3 compact-card-grid" id="leadership-grid">
-              <div class="notice">Loading leadership...</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section-tight" id="regions">
-        <div class="container">
-          <div class="section-header compact-section-header">
-            <div>
-              <div class="eyebrow">Regional Directory</div>
-              <h2 class="section-title">Regions & Districts</h2>
-              <p class="section-subtitle">
-                Current district list grouped by APRP region.
-              </p>
-            </div>
-          </div>
-
-          <div id="region-directory" class="grid grid-2 compact-card-grid">
-            <div class="notice">Loading regions...</div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <div class="footer-inner">
-        <div>
-          <strong>APRP Federal Archives</strong>
-          <div class="text-small">Government directory generated from public APRP records.</div>
-        </div>
-        <div class="text-small">Office of Records & Historical Preservation</div>
+    <section class="section-card">
+      <div class="section-heading">
+        <p class="eyebrow blue">Control of Government</p>
+        <h2>Current Balance of Power</h2>
       </div>
-    </footer>
 
-    <nav class="mobile-bottom-nav" data-mobile-nav aria-label="Mobile navigation"></nav>
-  </div>
+      <div class="control-grid">
+        <article>
+          <span>Executive</span>
+          <strong>POTUS / VP</strong>
+          <div class="mini-line blue-line"></div>
+        </article>
+        <article>
+          <span>Senate</span>
+          <strong>Party Split</strong>
+          <div class="split-bar"><i class="dnc" style="width:57%"></i><i class="gop" style="width:43%"></i></div>
+        </article>
+        <article>
+          <span>House</span>
+          <strong>Party Split</strong>
+          <div class="split-bar"><i class="dnc" style="width:52%"></i><i class="gop" style="width:45%"></i><i class="vacant" style="width:3%"></i></div>
+        </article>
+        <article>
+          <span>Governors</span>
+          <strong>Party Split</strong>
+          <div class="split-bar"><i class="dnc" style="width:57%"></i><i class="gop" style="width:43%"></i></div>
+        </article>
+      </div>
+    </section>
 
-  <script src="./assets/js/sheets.js"></script>
-  <script src="./assets/js/shared.js"></script>
-  <script src="./assets/js/government.js"></script>
+    <section class="section-card">
+      <div class="section-heading">
+        <p class="eyebrow blue">Region Map</p>
+        <h2>State-to-Region Map</h2>
+        <p>Map placeholder. This page will load WEB_DISTRICTS, WEB_GOV, WEB_SEN, and WEB_LDR.</p>
+      </div>
+
+      <div class="map-placeholder">
+        Interactive government map loads here.
+      </div>
+    </section>
+  </main>
+
+  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+    <a href="index.html">Home</a>
+    <a href="government.html">Gov</a>
+    <a href="economy.html">Econ</a>
+    <a href="hall-of-presidents.html">Pres</a>
+    <a href="live-results.html">Live</a>
+  </nav>
 </body>
 </html>
