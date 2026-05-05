@@ -1,6 +1,10 @@
 /* APRP Federal Archive — Hall of Presidents
    Supports WEB_POTUS portrait_url, portrait_url2, portrait_url3, portrait_url4.
    Columns T, U, V are treated as extra Hall of Presidents images.
+   Fixes:
+   - Portrait stays square, not stretched down the full card.
+   - Extra images show as clickable thumbnails inside portrait.
+   - **text** renders as bold in summaries, taglines, actions, crises/scandals.
 */
 
 (function () {
@@ -28,6 +32,10 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
   });
+
+  function markdownHTML(value) {
+    return safeHTML(value).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  }
 
   let ALL_PRESIDENTS = [];
   let FILTERED_PRESIDENTS = [];
@@ -92,15 +100,7 @@
   function presidentPhoto(row) {
     return firstValue(
       row,
-      [
-        "portrait_url",
-        "photo",
-        "image",
-        "image_url",
-        "portrait",
-        "img",
-        "picture",
-      ],
+      ["portrait_url", "photo", "image", "image_url", "portrait", "img", "picture"],
       "./assets/img/president-placeholder.png"
     );
   }
@@ -112,9 +112,7 @@
       firstValue(row, ["portrait_url4", "portrait_4", "photo_4", "image_4", "extra_image_3"], ""),
     ];
 
-    return urls
-      .map(cleanCell)
-      .filter(Boolean);
+    return urls.map(cleanCell).filter(Boolean);
   }
 
   function allPresidentPhotos(row) {
@@ -256,58 +254,94 @@
     const style = document.createElement("style");
     style.id = "aprp-president-gallery-style";
     style.textContent = `
+      .president-record {
+        grid-template-columns: 300px minmax(0, 1fr) !important;
+        align-items: start !important;
+      }
+
       .president-portrait-panel {
-        display: grid;
-        grid-template-rows: minmax(0, 1fr) auto;
-        aspect-ratio: auto !important;
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        aspect-ratio: 1 / 1 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow: hidden !important;
+        align-self: start !important;
+        background:
+          linear-gradient(180deg, rgba(7,17,31,.15), rgba(7,17,31,.75)),
+          #d8dee8 !important;
       }
 
       .president-main-photo-wrap {
-        position: relative;
-        min-height: 280px;
-        overflow: hidden;
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
       }
 
       .president-main-photo-wrap img {
-        width: 100%;
-        height: 100%;
-        min-height: 280px;
-        object-fit: cover;
-        object-position: center top;
-        display: block;
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        object-fit: cover !important;
+        object-position: center top !important;
+        display: block !important;
+      }
+
+      .president-number-badge {
+        z-index: 6 !important;
+      }
+
+      .president-party-band {
+        z-index: 5 !important;
+        padding-bottom: 78px !important;
       }
 
       .president-gallery-strip {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 6px;
-        padding: 8px;
-        background: rgba(7,17,31,.92);
-        border-top: 1px solid rgba(255,255,255,.14);
+        position: absolute !important;
+        left: 10px !important;
+        right: 10px !important;
+        bottom: 10px !important;
+        z-index: 7 !important;
+        display: flex !important;
+        gap: 7px !important;
+        padding: 7px !important;
+        border-radius: 14px !important;
+        background: rgba(7,17,31,.76) !important;
+        border: 1px solid rgba(255,255,255,.16) !important;
+        backdrop-filter: blur(8px) !important;
+        overflow-x: auto !important;
       }
 
       .president-gallery-thumb {
-        aspect-ratio: 1 / 1;
-        border: 1px solid rgba(255,255,255,.18);
-        border-radius: 10px;
-        overflow: hidden;
-        background: rgba(255,255,255,.10);
-        cursor: pointer;
-        padding: 0;
+        flex: 0 0 auto !important;
+        width: 44px !important;
+        height: 44px !important;
+        border: 1px solid rgba(255,255,255,.25) !important;
+        border-radius: 10px !important;
+        overflow: hidden !important;
+        background: rgba(255,255,255,.10) !important;
+        cursor: pointer !important;
+        padding: 0 !important;
       }
 
       .president-gallery-thumb img {
-        width: 100%;
-        height: 100%;
+        width: 100% !important;
+        height: 100% !important;
         min-height: 0 !important;
-        object-fit: cover;
-        object-position: center top;
-        display: block;
+        object-fit: cover !important;
+        object-position: center top !important;
+        display: block !important;
       }
 
       .president-gallery-thumb.is-active {
-        outline: 2px solid #93c5fd;
-        outline-offset: 1px;
+        outline: 2px solid #93c5fd !important;
+        outline-offset: 1px !important;
       }
 
       .selected-president-gallery {
@@ -326,13 +360,21 @@
         border: 1px solid rgba(255,255,255,.14);
       }
 
+      .president-summary-box p strong,
+      .president-list-box li strong,
+      .president-tagline strong,
+      .selected-president-card p strong {
+        font-weight: 950;
+        color: inherit;
+      }
+
       @media (max-width: 860px) {
-        .president-main-photo-wrap {
-          min-height: 250px;
+        .president-record {
+          grid-template-columns: 1fr !important;
         }
 
-        .president-main-photo-wrap img {
-          min-height: 250px;
+        .president-portrait-panel {
+          aspect-ratio: 1 / 1 !important;
         }
       }
     `;
@@ -493,7 +535,7 @@
     return `
       <div class="president-info-tile">
         <strong>${safeHTML(label)}</strong>
-        <span>${safeHTML(value)}</span>
+        <span>${markdownHTML(value)}</span>
       </div>
     `;
   }
@@ -506,8 +548,8 @@
         <h4>${safeHTML(title)}</h4>
         ${
           items.length
-            ? `<ul>${items.map((item) => `<li>${safeHTML(item)}</li>`).join("")}</ul>`
-            : `<p class="text-small">${safeHTML(fallback)}</p>`
+            ? `<ul>${items.map((item) => `<li>${markdownHTML(item)}</li>`).join("")}</ul>`
+            : `<p class="text-small">${markdownHTML(fallback)}</p>`
         }
       </div>
     `;
@@ -531,7 +573,7 @@
   function photoGalleryHTML(president) {
     const photos = president._photos || [];
 
-    if (!photos.length) return "";
+    if (photos.length <= 1) return "";
 
     return `
       <div class="president-gallery-strip">
@@ -583,7 +625,7 @@
               ${president._number ? `${safeHTML(president._number)}${numberSuffix(president._number)} President` : "President"}
             </div>
             <h2>${safeHTML(president._name)}</h2>
-            <p class="president-tagline">${safeHTML(president._tagline || president._summary)}</p>
+            <p class="president-tagline">${markdownHTML(president._tagline || president._summary)}</p>
           </div>
 
           <div class="president-info-grid">
@@ -599,7 +641,7 @@
 
           <div class="president-summary-box">
             <strong>Administration Summary</strong>
-            <p>${safeHTML(president._summary)}</p>
+            <p>${markdownHTML(president._summary)}</p>
           </div>
 
           <div class="president-lists">
@@ -683,7 +725,7 @@
     return `
       <div class="selected-detail-row">
         <strong>${safeHTML(label)}</strong>
-        <span>${safeHTML(value)}</span>
+        <span>${markdownHTML(value)}</span>
       </div>
     `;
   }
@@ -714,7 +756,7 @@
     slot.innerHTML = `
       <div class="eyebrow">Selected President</div>
       <h3>${safeHTML(president._name)}</h3>
-      <p>${safeHTML(president._summary)}</p>
+      <p>${markdownHTML(president._summary)}</p>
 
       ${selectedGalleryHTML(president)}
 
