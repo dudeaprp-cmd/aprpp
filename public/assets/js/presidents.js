@@ -1,10 +1,7 @@
 /* APRP Federal Archive — Hall of Presidents
-   Supports WEB_POTUS portrait_url, portrait_url2, portrait_url3, portrait_url4.
-   Columns T, U, V are treated as extra Hall of Presidents images.
-   Fixes:
-   - Portrait stays square, not stretched down the full card.
-   - Extra images show as clickable thumbnails inside portrait.
-   - **text** renders as bold in summaries, taglines, actions, crises/scandals.
+   WEB_POTUS supports:
+   portrait_url, portrait_url2, portrait_url3, portrait_url4
+   yearlysummary = Column W, one text cell, years separated by ;
 */
 
 (function () {
@@ -86,7 +83,7 @@
   }
 
   function presidentName(row) {
-    return firstValue(row, ["president", "name", "full_name", "person", "officeholder"], "Unknown President");
+    return firstValue(row, ["full_name", "president", "name", "person", "officeholder"], "Unknown President");
   }
 
   function presidentNumber(row) {
@@ -106,20 +103,15 @@
   }
 
   function presidentExtraPhotos(row) {
-    const urls = [
-      firstValue(row, ["portrait_url2", "portrait_2", "photo_2", "image_2", "extra_image_1"], ""),
-      firstValue(row, ["portrait_url3", "portrait_3", "photo_3", "image_3", "extra_image_2"], ""),
-      firstValue(row, ["portrait_url4", "portrait_4", "photo_4", "image_4", "extra_image_3"], ""),
-    ];
-
-    return urls.map(cleanCell).filter(Boolean);
+    return [
+      firstValue(row, ["portrait_url2", "portrait_2", "photo_2", "image_2"], ""),
+      firstValue(row, ["portrait_url3", "portrait_3", "photo_3", "image_3"], ""),
+      firstValue(row, ["portrait_url4", "portrait_4", "photo_4", "image_4"], ""),
+    ].map(cleanCell).filter(Boolean);
   }
 
   function allPresidentPhotos(row) {
-    const primary = presidentPhoto(row);
-    const extras = presidentExtraPhotos(row);
-
-    return [primary, ...extras]
+    return [presidentPhoto(row), ...presidentExtraPhotos(row)]
       .map(cleanCell)
       .filter(Boolean)
       .filter((url, index, arr) => arr.indexOf(url) === index);
@@ -129,8 +121,8 @@
     const direct = firstValue(row, ["term", "years", "term_years", "served", "dates"], "");
     if (direct) return direct;
 
-    const start = firstValue(row, ["start_year", "term_start", "inauguration_year", "start"], "");
-    const end = firstValue(row, ["end_year", "term_end", "left_office_year", "end"], "");
+    const start = firstValue(row, ["term_start", "start_year", "inauguration_year", "start"], "");
+    const end = firstValue(row, ["term_end", "end_year", "left_office_year", "end"], "");
 
     if (start && end) return `${start}–${end}`;
     if (start) return `${start}–`;
@@ -139,8 +131,11 @@
   }
 
   function presidentStartYear(row) {
-    const direct = firstValue(row, ["start_year", "term_start", "inauguration_year", "start"], "");
-    if (direct) return toNumber(direct, 0);
+    const direct = firstValue(row, ["term_start", "start_year", "inauguration_year", "start"], "");
+    if (direct) {
+      const match = cleanCell(direct).match(/\b(19|20)\d{2}\b/);
+      return match ? toNumber(match[0], 0) : toNumber(direct, 0);
+    }
 
     const term = presidentTerm(row);
     const match = term.match(/\b(19|20)\d{2}\b/);
@@ -148,8 +143,11 @@
   }
 
   function presidentEndYear(row) {
-    const direct = firstValue(row, ["end_year", "term_end", "left_office_year", "end"], "");
-    if (direct) return toNumber(direct, 0);
+    const direct = firstValue(row, ["term_end", "end_year", "left_office_year", "end"], "");
+    if (direct) {
+      const match = cleanCell(direct).match(/\b(19|20)\d{2}\b/);
+      return match ? toNumber(match[0], 0) : toNumber(direct, 0);
+    }
 
     const term = presidentTerm(row);
     const years = term.match(/\b(19|20)\d{2}\b/g);
@@ -169,7 +167,7 @@
   }
 
   function presidentPreviousOffice(row) {
-    return firstValue(row, ["previous_office", "previous_roles", "prior_office", "former_office"], "");
+    return firstValue(row, ["previous_offices", "previous_office", "previous_roles", "prior_office", "former_office"], "");
   }
 
   function presidentEducation(row) {
@@ -190,6 +188,10 @@
 
   function presidentSummary(row) {
     return firstValue(row, ["summary", "legacy_summary", "description", "bio", "short_summary"], "No presidential summary provided.");
+  }
+
+  function presidentYearSummary(row) {
+    return firstValue(row, ["yearlysummary", "yearly_summary", "year_summary", "year_by_year", "annual_summary"], "");
   }
 
   function presidentActions(row) {
@@ -241,6 +243,7 @@
       _pob: presidentPOB(row),
       _tagline: presidentTagline(row),
       _summary: presidentSummary(row),
+      _yearSummary: presidentYearSummary(row),
       _actions: presidentActions(row),
       _scandals: presidentScandals(row),
       _crises: presidentCrises(row),
@@ -248,7 +251,7 @@
     };
   }
 
-  function injectPresidentGalleryCSS() {
+  function injectPresidentCSS() {
     if (document.querySelector("#aprp-president-gallery-style")) return;
 
     const style = document.createElement("style");
@@ -257,6 +260,13 @@
       .president-record {
         grid-template-columns: 300px minmax(0, 1fr) !important;
         align-items: start !important;
+      }
+
+      .president-left-column {
+        display: grid !important;
+        gap: 16px !important;
+        align-self: start !important;
+        min-width: 0 !important;
       }
 
       .president-portrait-panel {
@@ -268,9 +278,7 @@
         height: auto !important;
         overflow: hidden !important;
         align-self: start !important;
-        background:
-          linear-gradient(180deg, rgba(7,17,31,.15), rgba(7,17,31,.75)),
-          #d8dee8 !important;
+        background: #d8dee8 !important;
       }
 
       .president-main-photo-wrap {
@@ -278,16 +286,16 @@
         inset: 0 !important;
         width: 100% !important;
         height: 100% !important;
-        min-height: 0 !important;
         overflow: hidden !important;
       }
 
-      .president-main-photo-wrap img {
+      .president-main-photo-wrap > img.president-main-photo {
         position: absolute !important;
         inset: 0 !important;
         width: 100% !important;
         height: 100% !important;
         min-height: 0 !important;
+        max-height: none !important;
         object-fit: cover !important;
         object-position: center top !important;
         display: block !important;
@@ -299,30 +307,36 @@
 
       .president-party-band {
         z-index: 5 !important;
-        padding-bottom: 78px !important;
+        padding-bottom: 70px !important;
       }
 
       .president-gallery-strip {
         position: absolute !important;
-        left: 10px !important;
-        right: 10px !important;
-        bottom: 10px !important;
-        z-index: 7 !important;
+        left: 12px !important;
+        right: 12px !important;
+        bottom: 12px !important;
+        z-index: 8 !important;
         display: flex !important;
         gap: 7px !important;
         padding: 7px !important;
         border-radius: 14px !important;
-        background: rgba(7,17,31,.76) !important;
-        border: 1px solid rgba(255,255,255,.16) !important;
+        background: rgba(7,17,31,.80) !important;
+        border: 1px solid rgba(255,255,255,.18) !important;
         backdrop-filter: blur(8px) !important;
         overflow-x: auto !important;
+        max-width: calc(100% - 24px) !important;
       }
 
-      .president-gallery-thumb {
-        flex: 0 0 auto !important;
-        width: 44px !important;
-        height: 44px !important;
-        border: 1px solid rgba(255,255,255,.25) !important;
+      button.president-gallery-thumb {
+        flex: 0 0 48px !important;
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        max-width: 48px !important;
+        min-height: 48px !important;
+        max-height: 48px !important;
+        display: block !important;
+        border: 1px solid rgba(255,255,255,.30) !important;
         border-radius: 10px !important;
         overflow: hidden !important;
         background: rgba(255,255,255,.10) !important;
@@ -330,18 +344,48 @@
         padding: 0 !important;
       }
 
-      .president-gallery-thumb img {
-        width: 100% !important;
-        height: 100% !important;
-        min-height: 0 !important;
+      button.president-gallery-thumb > img.president-gallery-thumb-img {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        min-height: 48px !important;
+        max-width: 48px !important;
+        max-height: 48px !important;
         object-fit: cover !important;
         object-position: center top !important;
         display: block !important;
       }
 
-      .president-gallery-thumb.is-active {
+      button.president-gallery-thumb.is-active {
         outline: 2px solid #93c5fd !important;
         outline-offset: 1px !important;
+      }
+
+      .president-year-summary-box {
+        padding: 16px !important;
+        border-radius: 18px !important;
+        background: rgba(255,255,255,.88) !important;
+        border: 1px solid rgba(15,23,42,.12) !important;
+        box-shadow: 0 12px 30px rgba(15,23,42,.08) !important;
+      }
+
+      .president-year-summary-box h4 {
+        margin: 0 0 10px !important;
+        font-family: Georgia, serif !important;
+        font-size: 1.05rem !important;
+        color: #111827 !important;
+      }
+
+      .president-year-summary-box ul {
+        margin: 0 !important;
+        padding-left: 18px !important;
+        color: #64748b !important;
+        font-size: .9rem !important;
+        line-height: 1.45 !important;
+      }
+
+      .president-year-summary-box li + li {
+        margin-top: 7px !important;
       }
 
       .selected-president-gallery {
@@ -363,7 +407,8 @@
       .president-summary-box p strong,
       .president-list-box li strong,
       .president-tagline strong,
-      .selected-president-card p strong {
+      .selected-president-card p strong,
+      .president-year-summary-box strong {
         font-weight: 950;
         color: inherit;
       }
@@ -386,14 +431,14 @@
     const partySelect = getEl("#presidents-party-filter");
     const yearSelect = getEl("#presidents-year-filter");
 
-    const parties = Array.from(new Set(presidents.map((president) => president._party).filter(Boolean)))
+    const parties = Array.from(new Set(presidents.map((p) => p._party).filter(Boolean)))
       .sort((a, b) => a.localeCompare(b));
 
     const years = Array.from(new Set(
-      presidents.flatMap((president) => {
+      presidents.flatMap((p) => {
         const years = [];
-        if (president._startYear) years.push(String(president._startYear));
-        if (president._endYear && president._endYear !== president._startYear) years.push(String(president._endYear));
+        if (p._startYear) years.push(String(p._startYear));
+        if (p._endYear && p._endYear !== p._startYear) years.push(String(p._endYear));
         return years;
       })
     )).sort((a, b) => toNumber(b, 0) - toNumber(a, 0));
@@ -427,6 +472,7 @@
       president._education,
       president._tagline,
       president._summary,
+      president._yearSummary,
       president._actions,
       president._scandals,
       president._crises,
@@ -466,7 +512,6 @@
       if (!presidentMatchesSearch(president, search)) return false;
       if (party !== "all" && president._party !== party) return false;
       if (!presidentMatchesYear(president, year)) return false;
-
       return true;
     });
 
@@ -497,7 +542,7 @@
   }
 
   function renderStats() {
-    const parties = new Set(FILTERED_PRESIDENTS.map((president) => president._party).filter(Boolean));
+    const parties = new Set(FILTERED_PRESIDENTS.map((p) => p._party).filter(Boolean));
 
     setText("#presidents-total-count", FILTERED_PRESIDENTS.length.toLocaleString());
     setText("#presidents-party-count", parties.size.toLocaleString());
@@ -555,6 +600,21 @@
     `;
   }
 
+  function yearSummaryBox(president) {
+    const items = splitList(president._yearSummary);
+
+    if (!items.length) return "";
+
+    return `
+      <div class="president-year-summary-box">
+        <h4>Year-by-Year Summary</h4>
+        <ul>
+          ${items.map((item) => `<li>${markdownHTML(item)}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  }
+
   function numberSuffix(number) {
     const n = Number(number);
     if (!Number.isFinite(n)) return "";
@@ -586,6 +646,7 @@
             aria-label="Show image ${index + 1} for ${safeHTML(president._name)}"
           >
             <img
+              class="president-gallery-thumb-img"
               src="${safeHTML(url)}"
               alt="${safeHTML(president._name)} image ${index + 1}"
               onerror="this.src='./assets/img/president-placeholder.png'"
@@ -599,24 +660,29 @@
   function presidentRecordHTML(president) {
     return `
       <article class="president-record" data-president-id="${safeHTML(president._id)}">
-        <div class="president-portrait-panel">
-          <div class="president-main-photo-wrap">
-            <img
-              id="main-photo-${safeHTML(president._id)}"
-              src="${safeHTML(president._photo)}"
-              alt="${safeHTML(president._name)}"
-              onerror="this.src='./assets/img/president-placeholder.png'"
-            />
-            <div class="president-number-badge">
-              ${president._number ? `#${safeHTML(president._number)}` : "—"}
+        <div class="president-left-column">
+          <div class="president-portrait-panel">
+            <div class="president-main-photo-wrap">
+              <img
+                class="president-main-photo"
+                id="main-photo-${safeHTML(president._id)}"
+                src="${safeHTML(president._photo)}"
+                alt="${safeHTML(president._name)}"
+                onerror="this.src='./assets/img/president-placeholder.png'"
+              />
+              <div class="president-number-badge">
+                ${president._number ? `#${safeHTML(president._number)}` : "—"}
+              </div>
+              <div class="president-party-band">
+                <strong>Party</strong>
+                ${partyPill(president)}
+              </div>
             </div>
-            <div class="president-party-band">
-              <strong>Party</strong>
-              ${partyPill(president)}
-            </div>
+
+            ${photoGalleryHTML(president)}
           </div>
 
-          ${photoGalleryHTML(president)}
+          ${yearSummaryBox(president)}
         </div>
 
         <div class="president-info-panel">
@@ -684,11 +750,7 @@
     if (!slot) return;
 
     if (!FILTERED_PRESIDENTS.length) {
-      slot.innerHTML = `
-        <div class="presidents-empty">
-          No presidents match the current filters.
-        </div>
-      `;
+      slot.innerHTML = `<div class="presidents-empty">No presidents match the current filters.</div>`;
       return;
     }
 
@@ -790,7 +852,7 @@
 
   async function initPresidents() {
     try {
-      injectPresidentGalleryCSS();
+      injectPresidentCSS();
 
       if (!fetchSheets) {
         throw new Error("Sheet loader is unavailable.");
