@@ -1,13 +1,34 @@
 /* APRP Federal Archive — Hall of Presidents
    WEB_POTUS supports:
-   portrait_url, portrait_url2, portrait_url3, portrait_url4
-   yearlysummary = Column W, one text cell, years separated by ;
+   A number
+   B slug
+   C full_name
+   D party
+   E term_start
+   F term_end
+   G vice_president
+   H first_lady
+   I portrait_url
+   J tagline
+   K dob
+   L pob
+   M home_state
+   N education
+   O previous_offices
+   P key_events
+   Q crises
+   R actions
+   S summary
+   T portrait_url2
+   U portrait_url3
+   V portrait_url4
+   W yearlysummary
 */
 
 (function () {
   const APRP = window.APRP || {};
-
   const fetchSheets = APRP.fetchSheets;
+
   const cleanCell = APRP.cleanCell || ((value) => String(value ?? "").trim());
 
   const toNumber = APRP.toNumber || ((value, fallback = 0) => {
@@ -34,17 +55,49 @@
     return safeHTML(value).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   }
 
+  function normalizeKey(key) {
+    return cleanCell(key).toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  function rowValue(row, keys, fallback = "") {
+    if (!row) return fallback;
+
+    const wanted = keys.map(normalizeKey);
+
+    for (const key of Object.keys(row)) {
+      if (wanted.includes(normalizeKey(key))) {
+        const value = cleanCell(row[key]);
+        if (value) return value;
+      }
+    }
+
+    return fallback;
+  }
+
+  function rowColumn(row, index, fallback = "") {
+    if (!row) return fallback;
+
+    if (Array.isArray(row)) {
+      return cleanCell(row[index]) || fallback;
+    }
+
+    const values = Object.values(row);
+    return cleanCell(values[index]) || fallback;
+  }
+
   let ALL_PRESIDENTS = [];
   let FILTERED_PRESIDENTS = [];
 
   const PARTY_COLORS = {
     DNC: "#2563eb",
-    DEM: "#2563eb",
-    DEMOCRAT: "#2563eb",
     DEMOCRATIC: "#2563eb",
+    DEMOCRAT: "#2563eb",
+    DEM: "#2563eb",
+    DEMOCRATICPARTY: "#2563eb",
     GOP: "#b91c1c",
-    REP: "#b91c1c",
     REPUBLICAN: "#b91c1c",
+    REP: "#b91c1c",
+    REPUBLICANPARTY: "#b91c1c",
     IND: "#7c3aed",
     INDEPENDENT: "#7c3aed",
     OTHER: "#64748b",
@@ -59,20 +112,11 @@
     if (el) el.textContent = value;
   }
 
-  function firstValue(row, keys, fallback = "") {
-    for (const key of keys) {
-      const value = cleanCell(row?.[key]);
-      if (value !== "") return value;
-    }
-
-    return fallback;
-  }
-
   function normalizeParty(value) {
-    const raw = cleanCell(value).toUpperCase();
+    const raw = normalizeKey(value).toUpperCase();
 
-    if (["D", "DEM", "DEMOCRAT", "DEMOCRATIC", "DNC"].includes(raw)) return "DNC";
-    if (["R", "REP", "REPUBLICAN", "GOP"].includes(raw)) return "GOP";
+    if (["D", "DEM", "DEMOCRAT", "DEMOCRATIC", "DNC", "DEMOCRATICPARTY"].includes(raw)) return "DNC";
+    if (["R", "REP", "REPUBLICAN", "GOP", "REPUBLICANPARTY"].includes(raw)) return "GOP";
     if (["I", "IND", "INDEPENDENT"].includes(raw)) return "IND";
 
     return raw || "OTHER";
@@ -83,30 +127,26 @@
   }
 
   function presidentName(row) {
-    return firstValue(row, ["full_name", "president", "name", "person", "officeholder"], "Unknown President");
+    return rowValue(row, ["full_name", "president", "name", "person", "officeholder"], rowColumn(row, 2, "Unknown President"));
   }
 
   function presidentNumber(row) {
-    return toNumber(firstValue(row, ["number", "president_number", "no", "order", "num"], 0), 0);
+    return toNumber(rowValue(row, ["number", "president_number", "no", "order", "num"], rowColumn(row, 0, 0)), 0);
   }
 
   function presidentParty(row) {
-    return firstValue(row, ["party", "party_id", "president_party", "winner_party"], "OTHER");
+    return rowValue(row, ["party", "party_id", "president_party", "winner_party"], rowColumn(row, 3, "OTHER"));
   }
 
   function presidentPhoto(row) {
-    return firstValue(
-      row,
-      ["portrait_url", "photo", "image", "image_url", "portrait", "img", "picture"],
-      "./assets/img/president-placeholder.png"
-    );
+    return rowValue(row, ["portrait_url", "photo", "image", "image_url", "portrait", "img", "picture"], rowColumn(row, 8, "./assets/img/president-placeholder.png"));
   }
 
   function presidentExtraPhotos(row) {
     return [
-      firstValue(row, ["portrait_url2", "portrait_2", "photo_2", "image_2"], ""),
-      firstValue(row, ["portrait_url3", "portrait_3", "photo_3", "image_3"], ""),
-      firstValue(row, ["portrait_url4", "portrait_4", "photo_4", "image_4"], ""),
+      rowValue(row, ["portrait_url2", "portrait_2", "photo_2", "image_2"], rowColumn(row, 19, "")),
+      rowValue(row, ["portrait_url3", "portrait_3", "photo_3", "image_3"], rowColumn(row, 20, "")),
+      rowValue(row, ["portrait_url4", "portrait_4", "photo_4", "image_4"], rowColumn(row, 21, "")),
     ].map(cleanCell).filter(Boolean);
   }
 
@@ -118,12 +158,11 @@
   }
 
   function presidentTerm(row) {
-    const direct = firstValue(row, ["term", "years", "term_years", "served", "dates"], "");
+    const start = rowValue(row, ["term_start", "start_year", "inauguration_year", "start"], rowColumn(row, 4, ""));
+    const end = rowValue(row, ["term_end", "end_year", "left_office_year", "end"], rowColumn(row, 5, ""));
+    const direct = rowValue(row, ["term", "years", "term_years", "served", "dates"], "");
+
     if (direct) return direct;
-
-    const start = firstValue(row, ["term_start", "start_year", "inauguration_year", "start"], "");
-    const end = firstValue(row, ["term_end", "end_year", "left_office_year", "end"], "");
-
     if (start && end) return `${start}–${end}`;
     if (start) return `${start}–`;
 
@@ -131,83 +170,75 @@
   }
 
   function presidentStartYear(row) {
-    const direct = firstValue(row, ["term_start", "start_year", "inauguration_year", "start"], "");
-    if (direct) {
-      const match = cleanCell(direct).match(/\b(19|20)\d{2}\b/);
-      return match ? toNumber(match[0], 0) : toNumber(direct, 0);
-    }
-
-    const term = presidentTerm(row);
-    const match = term.match(/\b(19|20)\d{2}\b/);
+    const value = rowValue(row, ["term_start", "start_year", "inauguration_year", "start"], rowColumn(row, 4, ""));
+    const match = cleanCell(value || presidentTerm(row)).match(/\b(19|20)\d{2}\b/);
     return match ? toNumber(match[0], 0) : 0;
   }
 
   function presidentEndYear(row) {
-    const direct = firstValue(row, ["term_end", "end_year", "left_office_year", "end"], "");
-    if (direct) {
-      const match = cleanCell(direct).match(/\b(19|20)\d{2}\b/);
-      return match ? toNumber(match[0], 0) : toNumber(direct, 0);
-    }
+    const value = rowValue(row, ["term_end", "end_year", "left_office_year", "end"], rowColumn(row, 5, ""));
+    const match = cleanCell(value).match(/\b(19|20)\d{2}\b/);
 
-    const term = presidentTerm(row);
-    const years = term.match(/\b(19|20)\d{2}\b/g);
+    if (match) return toNumber(match[0], 0);
+
+    const years = presidentTerm(row).match(/\b(19|20)\d{2}\b/g);
     return years && years[1] ? toNumber(years[1], 0) : presidentStartYear(row);
   }
 
   function presidentVP(row) {
-    return firstValue(row, ["vice_president", "vp", "vice", "running_mate"], "");
+    return rowValue(row, ["vice_president", "vp", "vice", "running_mate"], rowColumn(row, 6, ""));
   }
 
   function presidentFirstLady(row) {
-    return firstValue(row, ["first_lady", "flotus", "spouse"], "");
+    return rowValue(row, ["first_lady", "flotus", "spouse"], rowColumn(row, 7, ""));
   }
 
   function presidentHomeState(row) {
-    return firstValue(row, ["home_state", "state", "home"], "");
+    return rowValue(row, ["home_state", "state", "home"], rowColumn(row, 12, ""));
   }
 
   function presidentPreviousOffice(row) {
-    return firstValue(row, ["previous_offices", "previous_office", "previous_roles", "prior_office", "former_office"], "");
+    return rowValue(row, ["previous_offices", "previous_office", "previous_roles", "prior_office", "former_office"], rowColumn(row, 14, ""));
   }
 
   function presidentEducation(row) {
-    return firstValue(row, ["education", "school", "college", "university"], "");
+    return rowValue(row, ["education", "school", "college", "university"], rowColumn(row, 13, ""));
   }
 
   function presidentDOB(row) {
-    return firstValue(row, ["dob", "date_of_birth", "birthdate"], "");
+    return rowValue(row, ["dob", "date_of_birth", "birthdate"], rowColumn(row, 10, ""));
   }
 
   function presidentPOB(row) {
-    return firstValue(row, ["pob", "place_of_birth", "birthplace"], "");
+    return rowValue(row, ["pob", "place_of_birth", "birthplace"], rowColumn(row, 11, ""));
   }
 
   function presidentTagline(row) {
-    return firstValue(row, ["tagline", "one_liner", "short_line", "legacy_line"], "");
+    return rowValue(row, ["tagline", "one_liner", "short_line", "legacy_line"], rowColumn(row, 9, ""));
   }
 
   function presidentSummary(row) {
-    return firstValue(row, ["summary", "legacy_summary", "description", "bio", "short_summary"], "No presidential summary provided.");
+    return rowValue(row, ["summary", "legacy_summary", "description", "bio", "short_summary"], rowColumn(row, 18, "No presidential summary provided."));
   }
 
   function presidentYearSummary(row) {
-    return firstValue(row, ["yearlysummary", "yearly_summary", "year_summary", "year_by_year", "annual_summary"], "");
+    return rowValue(row, ["yearlysummary", "yearly_summary", "year_summary", "year_by_year", "annual_summary"], rowColumn(row, 22, ""));
   }
 
   function presidentActions(row) {
-    return firstValue(row, ["actions", "top_actions", "major_actions", "accomplishments", "achievements"], "");
+    return rowValue(row, ["actions", "top_actions", "major_actions", "accomplishments", "achievements"], rowColumn(row, 17, ""));
   }
 
   function presidentScandals(row) {
-    return firstValue(row, ["scandals", "controversies", "failures"], "");
+    return rowValue(row, ["scandals", "controversies", "failures"], "");
   }
 
   function presidentCrises(row) {
-    return firstValue(row, ["crises", "crisis", "key_crises", "major_crisis"], "");
+    return rowValue(row, ["crises", "crisis", "key_crises", "major_crisis"], rowColumn(row, 16, ""));
   }
 
   function presidentLink(row) {
-    return firstValue(row, ["link", "url", "doc", "document", "source"], "");
+    return rowValue(row, ["link", "url", "doc", "document", "source"], "");
   }
 
   function splitList(value) {
@@ -258,7 +289,7 @@
     style.id = "aprp-president-gallery-style";
     style.textContent = `
       .president-record {
-        grid-template-columns: 300px minmax(0, 1fr) !important;
+        grid-template-columns: 320px minmax(0, 1fr) !important;
         align-items: start !important;
       }
 
@@ -289,7 +320,7 @@
         overflow: hidden !important;
       }
 
-      .president-main-photo-wrap > img.president-main-photo {
+      .president-main-photo {
         position: absolute !important;
         inset: 0 !important;
         width: 100% !important;
@@ -302,12 +333,12 @@
       }
 
       .president-number-badge {
-        z-index: 6 !important;
+        z-index: 8 !important;
       }
 
       .president-party-band {
-        z-index: 5 !important;
-        padding-bottom: 70px !important;
+        z-index: 7 !important;
+        padding-bottom: 76px !important;
       }
 
       .president-gallery-strip {
@@ -315,48 +346,47 @@
         left: 12px !important;
         right: 12px !important;
         bottom: 12px !important;
-        z-index: 8 !important;
+        z-index: 10 !important;
         display: flex !important;
-        gap: 7px !important;
-        padding: 7px !important;
+        gap: 8px !important;
+        padding: 8px !important;
         border-radius: 14px !important;
-        background: rgba(7,17,31,.80) !important;
+        background: rgba(7,17,31,.82) !important;
         border: 1px solid rgba(255,255,255,.18) !important;
         backdrop-filter: blur(8px) !important;
         overflow-x: auto !important;
-        max-width: calc(100% - 24px) !important;
       }
 
-      button.president-gallery-thumb {
-        flex: 0 0 48px !important;
-        width: 48px !important;
-        height: 48px !important;
-        min-width: 48px !important;
-        max-width: 48px !important;
-        min-height: 48px !important;
-        max-height: 48px !important;
+      .president-gallery-thumb {
+        flex: 0 0 52px !important;
+        width: 52px !important;
+        height: 52px !important;
+        min-width: 52px !important;
+        max-width: 52px !important;
+        min-height: 52px !important;
+        max-height: 52px !important;
         display: block !important;
         border: 1px solid rgba(255,255,255,.30) !important;
-        border-radius: 10px !important;
+        border-radius: 11px !important;
         overflow: hidden !important;
         background: rgba(255,255,255,.10) !important;
         cursor: pointer !important;
         padding: 0 !important;
       }
 
-      button.president-gallery-thumb > img.president-gallery-thumb-img {
-        width: 48px !important;
-        height: 48px !important;
-        min-width: 48px !important;
-        min-height: 48px !important;
-        max-width: 48px !important;
-        max-height: 48px !important;
+      .president-gallery-thumb-img {
+        width: 52px !important;
+        height: 52px !important;
+        min-width: 52px !important;
+        min-height: 52px !important;
+        max-width: 52px !important;
+        max-height: 52px !important;
         object-fit: cover !important;
         object-position: center top !important;
         display: block !important;
       }
 
-      button.president-gallery-thumb.is-active {
+      .president-gallery-thumb.is-active {
         outline: 2px solid #93c5fd !important;
         outline-offset: 1px !important;
       }
@@ -364,7 +394,7 @@
       .president-year-summary-box {
         padding: 16px !important;
         border-radius: 18px !important;
-        background: rgba(255,255,255,.88) !important;
+        background: rgba(255,255,255,.92) !important;
         border: 1px solid rgba(15,23,42,.12) !important;
         box-shadow: 0 12px 30px rgba(15,23,42,.08) !important;
       }
@@ -388,6 +418,15 @@
         margin-top: 7px !important;
       }
 
+      .president-summary-box p strong,
+      .president-list-box li strong,
+      .president-tagline strong,
+      .selected-president-card p strong,
+      .president-year-summary-box strong {
+        font-weight: 950;
+        color: inherit;
+      }
+
       .selected-president-gallery {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -402,15 +441,6 @@
         object-position: center top;
         border-radius: 10px;
         border: 1px solid rgba(255,255,255,.14);
-      }
-
-      .president-summary-box p strong,
-      .president-list-box li strong,
-      .president-tagline strong,
-      .selected-president-card p strong,
-      .president-year-summary-box strong {
-        font-weight: 950;
-        color: inherit;
       }
 
       @media (max-width: 860px) {
