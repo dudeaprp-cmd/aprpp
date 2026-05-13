@@ -1,13 +1,13 @@
 /* APRP Federal Archive — Budget Builder
-   This file must be saved as:
-   public/assets/js/budget-builder.js
+   Reads public Google Sheet CSV data.
+   Shows every tax and every spending field.
+   No special laws tab.
 */
 
 (function () {
   "use strict";
 
   const APRP = window.APRP || {};
-
   const fetchSheetsSafe = APRP.fetchSheetsSafe;
   const fetchSheets = APRP.fetchSheets;
 
@@ -37,9 +37,25 @@
     "YEARLY_DISCRETIONARY_ENGINE",
     "YEARLY_MANDATORY_ENGINE",
     "YEARLY_MACRO_ENGINE",
-    "EVENT_POLICY_INPUTS",
     "YEARLY_CONFIG"
   ];
+
+  const METADATA_KEYS = new Set([
+    "year",
+    "label",
+    "active",
+    "is_current",
+    "period",
+    "period_num",
+    "start_period",
+    "start_num",
+    "end_period",
+    "end_num",
+    "notes",
+    "note",
+    "description",
+    "source"
+  ]);
 
   const SPENDING_FIELDS = [
     ["defense_spending", "Defense"],
@@ -70,8 +86,7 @@
 
   let state = {
     taxRows: [],
-    spending: {},
-    specialItems: []
+    spending: {}
   };
 
   function $(selector, root = document) {
@@ -80,6 +95,14 @@
 
   function $all(selector, root = document) {
     return Array.from(root.querySelectorAll(selector));
+  }
+
+  function titleCase(value) {
+    return cleanCell(value)
+      .replace(/_/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (m) => m.toUpperCase());
   }
 
   function fmtMoneyB(value) {
@@ -97,16 +120,8 @@
     return `${n.toFixed(n % 1 === 0 ? 0 : 1)}%`;
   }
 
-  function fmtNumber(value) {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return "—";
-    return n.toLocaleString("en-US", { maximumFractionDigits: 1 });
-  }
-
   function parseRate(value) {
-    const raw = cleanCell(value);
-    if (!raw) return 0;
-    return toNumber(raw, 0);
+    return toNumber(value, 0);
   }
 
   function updateStatus(text) {
@@ -121,7 +136,7 @@
     }
 
     if (!fetchSheets) {
-      throw new Error("APRP.fetchSheets missing. Make sure sheets.js loads before budget-builder.js.");
+      throw new Error("APRP.fetchSheets missing. Check sheets.js loads before budget-builder.js.");
     }
 
     DATA = {};
@@ -153,7 +168,6 @@
   function findYearRow(sheetName, year) {
     const rows = DATA[sheetName] || [];
     const target = Number(year);
-
     return rows.find((row) => toNumber(row.year, NaN) === target) || null;
   }
 
@@ -162,8 +176,8 @@
 
     SHEETS.forEach((sheetName) => {
       (DATA[sheetName] || []).forEach((row) => {
-        const y = toNumber(row.year, NaN);
-        if (Number.isFinite(y)) years.add(y);
+        const year = toNumber(row.year, NaN);
+        if (Number.isFinite(year)) years.add(year);
       });
     });
 
@@ -171,7 +185,7 @@
 
     if (sorted.length) return sorted;
 
-    return Array.from({ length: 20 }, (_, i) => 2011 + i);
+    return Array.from({ length: 20 }, (_, index) => 2011 + index);
   }
 
   function renderYearSelect() {
@@ -284,60 +298,80 @@
   function getTaxRowsForYear(year) {
     const rows = DATA.TAX_RATES_BY_YEAR || [];
     const target = Number(year);
+    const exactRows = rows.filter((row) => toNumber(row.year, NaN) === target);
 
-    const exact = rows.filter((row) => toNumber(row.year, NaN) === target);
+    const sourceRows = exactRows.length ? exactRows : rows;
 
-    if (exact.length) return exact;
+    const longRows = sourceRows.filter((row) => {
+      return cleanCell(row.tax_type || row.bracket || row.applied_rate || row.rule_rate || row.rate || row.tax_rate) !== "";
+    });
 
-    const previousYears = rows
-      .map((row) => toNumber(row.year, NaN))
-      .filter((y) => Number.isFinite(y) && y <= target)
-      .sort((a, b) => b - a);
+    if (longRows.length > 1) {
+      return longRows.map((row, index) => {
+        const taxType = cleanCell(row.tax_type || row.type || row.category || "tax");
+        const bracket = cleanCell(row.bracket || row.name || row.group || `item_${index + 1}`);
+        const label = `${titleCase(taxType)} — ${bracket}`;
+        const rate = parseRate(row.applied_rate || row.rule_rate || row.rate || row.tax_rate);
+        const baseRevenue =
+          toNumber(row.final_revenue, NaN) ||
+          toNumber(row.base_revenue, NaN) ||
+          toNumber(row.revenue, 0);
 
-    const fallbackYear = previousYears[0];
-
-    if (fallbackYear) {
-      return rows.filter((row) => toNumber(row.year, NaN) === fallbackYear);
+        return {
+          id: `${taxType}_${bracket}`.replace(/[^\w]+/g, "_"),
+          label,
+          baseRate: rate,
+          proposedRate: rate,
+          baseRevenue,
+          source: row
+        };
+      });
     }
 
-    return rows.slice(0, 30);
-  }
+    const wideRow =
+      exactRows[0] ||
+      rows.find((row) => cleanCell(row.active).toLowerCase() === "true") ||
+      rows[0] ||
+      {};
 
-  function taxRowName(row, index) {
-    const taxType = cleanCell(row.tax_type || row.type || row.category || "tax");
-    const bracket = cleanCell(row.bracket || row.name || row.group || `item_${index + 1}`);
+    const wideItems = Object.keys(wideRow)
+      .filter((key) => {
+        if (METADATA_KEYS.has(key)) return false;
+        const value = cleanCell(wideRow[key]);
+        if (value === "") return false;
+        const n = toNumber(value, NaN);
+        if (!Number.isFinite(n)) return false;
+        return key.includes("rate") || key.includes("tax") || key.includes("fica") || key.includes("medicare") || key.includes("social_security") || key.includes("capital") || key.includes("excise") || key.includes("income") || key.includes("corp");
+      })
+      .map((key) => {
+        const cleanKey = key
+          .replace(/_rate$/i, "")
+          .replace(/^rate_/i, "")
+          .replace(/_pct$/i, "")
+          .replace(/_percent$/i, "");
 
-    return `${taxType.replaceAll("_", " ")} — ${bracket}`;
-  }
+        const rate = parseRate(wideRow[key]);
 
-  function taxRowRate(row) {
-    return parseRate(row.applied_rate || row.rule_rate || row.rate || row.tax_rate);
+        return {
+          id: key,
+          label: titleCase(cleanKey),
+          baseRate: rate,
+          proposedRate: rate,
+          baseRevenue: 0,
+          source: wideRow
+        };
+      });
+
+    return wideItems;
   }
 
   function copyBaselineIntoState() {
-    state.taxRows = getTaxRowsForYear(selectedYear).map((row, index) => {
-      const rate = taxRowRate(row);
-      const baseRevenue = toNumber(row.final_revenue, NaN) ||
-        toNumber(row.base_revenue, NaN) ||
-        toNumber(row.revenue, 0);
-
-      return {
-        id: `${cleanCell(row.tax_type || "tax")}_${cleanCell(row.bracket || index)}`.replace(/[^\w]+/g, "_"),
-        label: taxRowName(row, index),
-        baseRate: rate,
-        proposedRate: rate,
-        baseRevenue,
-        row
-      };
-    });
+    state.taxRows = getTaxRowsForYear(selectedYear);
 
     state.spending = {};
-
     SPENDING_FIELDS.forEach(([key]) => {
       state.spending[key] = toNumber(baseline.disc?.[key], 0);
     });
-
-    state.specialItems = [];
   }
 
   function renderTaxSliders() {
@@ -345,18 +379,15 @@
     if (!container) return;
 
     if (!state.taxRows.length) {
-      container.innerHTML = `<p class="budget-note">No TAX_RATES_BY_YEAR rows found for FY${safeHTML(selectedYear)}.</p>`;
+      container.innerHTML = `<p class="budget-note">No tax rates found in TAX_RATES_BY_YEAR for FY${safeHTML(selectedYear)}.</p>`;
       return;
     }
 
     container.innerHTML = state.taxRows.map((item, index) => {
-      const safeId = `tax-slider-${index}`;
-
       return `
         <div class="budget-slider-row">
-          <label for="${safeId}">${safeHTML(item.label)}</label>
+          <label>${safeHTML(item.label)}</label>
           <input
-            id="${safeId}"
             type="range"
             min="0"
             max="65"
@@ -439,7 +470,18 @@
     });
 
     if (baseModeledRevenue <= 0) {
-      return baseTotal;
+      let changeSum = 0;
+      let count = 0;
+
+      state.taxRows.forEach((item) => {
+        if (item.baseRate > 0) {
+          changeSum += (item.proposedRate - item.baseRate) / item.baseRate;
+          count += 1;
+        }
+      });
+
+      const averageChange = count ? changeSum / count : 0;
+      return baseTotal * (1 + averageChange * 0.35);
     }
 
     const unmodeledRevenue = Math.max(0, baseTotal - baseModeledRevenue);
@@ -447,15 +489,7 @@
   }
 
   function calculateProjection() {
-    const specialCostB = state.specialItems.reduce((sum, item) => {
-      return sum + toNumber(item.directCost, 0) / 1_000_000_000;
-    }, 0);
-
-    const specialRevenueB = state.specialItems.reduce((sum, item) => {
-      return sum + toNumber(item.directRevenue, 0) / 1_000_000_000;
-    }, 0);
-
-    const proposedRevenue = calculateTaxRevenueProjection() + specialRevenueB;
+    const proposedRevenue = calculateTaxRevenueProjection();
 
     const proposedDiscretionary = Object.values(state.spending).reduce((sum, value) => {
       return sum + toNumber(value, 0);
@@ -464,8 +498,7 @@
     const proposedSpending =
       proposedDiscretionary +
       baseline.mandatorySpending +
-      baseline.interestCost +
-      specialCostB;
+      baseline.interestCost;
 
     const proposedDeficit = proposedRevenue - proposedSpending;
     const deficitChange = proposedDeficit - baseline.deficit;
@@ -474,8 +507,6 @@
     const proposedDebtToGdp = baseline.gdp ? (proposedDebt / baseline.gdp) * 100 : 0;
 
     return {
-      specialCostB,
-      specialRevenueB,
       proposedRevenue,
       proposedDiscretionary,
       proposedSpending,
@@ -528,8 +559,6 @@
       ["Discretionary Spending", baseline.discretionarySpending, p.proposedDiscretionary, "money"],
       ["Mandatory Spending", baseline.mandatorySpending, baseline.mandatorySpending, "money"],
       ["Interest Cost", baseline.interestCost, baseline.interestCost, "money"],
-      ["Special Cost", 0, p.specialCostB, "money"],
-      ["Special Revenue", 0, p.specialRevenueB, "money"],
       ["Deficit / Surplus", baseline.deficit, p.proposedDeficit, "money"],
       ["Debt-to-GDP", baseline.debtToGdp, p.proposedDebtToGdp, "percent"]
     ];
@@ -549,56 +578,24 @@
     }).join("");
   }
 
-  function renderSpecialItems() {
-    const table = $("#budget-law-table");
-    if (!table) return;
+  function allTaxLines() {
+    if (!state.taxRows.length) return "- No tax rates found.";
 
-    if (!state.specialItems.length) {
-      table.innerHTML = `<tr><td colspan="7">No special items added.</td></tr>`;
-      return;
-    }
-
-    table.innerHTML = state.specialItems.map((item) => `
-      <tr>
-        <td>${safeHTML(item.name)}</td>
-        <td>${safeHTML(item.type)}</td>
-        <td>${safeHTML(fmtMoneyB(toNumber(item.directCost, 0) / 1_000_000_000))}</td>
-        <td>${safeHTML(fmtMoneyB(toNumber(item.directRevenue, 0) / 1_000_000_000))}</td>
-        <td>${safeHTML(item.gdpEffect)}</td>
-        <td>${safeHTML(fmtNumber(item.approvalImpact))}</td>
-        <td>${safeHTML(fmtNumber(item.stockImpact))}</td>
-      </tr>
-    `).join("");
+    return state.taxRows.map((item) => {
+      const change = item.proposedRate - item.baseRate;
+      const sign = change >= 0 ? "+" : "";
+      return `- ${item.label}: ${fmtPercent(item.baseRate)} → ${fmtPercent(item.proposedRate)} (${sign}${change.toFixed(1)} pp)`;
+    }).join("\n");
   }
 
-  function mostChangedTaxes(limit = 10) {
-    return state.taxRows
-      .map((item) => ({
-        label: item.label,
-        base: item.baseRate,
-        proposed: item.proposedRate,
-        change: item.proposedRate - item.baseRate
-      }))
-      .filter((item) => Math.abs(item.change) >= 0.01)
-      .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
-      .slice(0, limit);
-  }
-
-  function mostChangedSpending(limit = 10) {
+  function allSpendingLines() {
     return SPENDING_FIELDS.map(([key, label]) => {
       const base = toNumber(baseline.disc?.[key], 0);
       const proposed = toNumber(state.spending[key], 0);
-
-      return {
-        label,
-        base,
-        proposed,
-        change: proposed - base
-      };
-    })
-      .filter((item) => Math.abs(item.change) >= 0.1)
-      .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
-      .slice(0, limit);
+      const change = proposed - base;
+      const sign = change >= 0 ? "+" : "";
+      return `- ${label}: ${fmtMoneyB(base)} → ${fmtMoneyB(proposed)} (${sign}${fmtMoneyB(change)})`;
+    }).join("\n");
   }
 
   function buildMarkdownExport() {
@@ -609,31 +606,6 @@
     const title = cleanCell($("#budget-title")?.value) || "Federal Budget Proposal";
     const sponsor = cleanCell($("#budget-sponsor")?.value) || "Unspecified";
     const party = cleanCell($("#budget-party")?.value) || "Unspecified";
-
-    const taxChanges = mostChangedTaxes();
-    const spendingChanges = mostChangedSpending();
-
-    const taxLines = taxChanges.length
-      ? taxChanges.map((item) => {
-          const sign = item.change >= 0 ? "+" : "";
-          return `- ${item.label}: ${fmtPercent(item.base)} → ${fmtPercent(item.proposed)} (${sign}${item.change.toFixed(1)} pp)`;
-        }).join("\n")
-      : "- No tax rate changes from baseline.";
-
-    const spendingLines = spendingChanges.length
-      ? spendingChanges.map((item) => {
-          const sign = item.change >= 0 ? "+" : "";
-          return `- ${item.label}: ${fmtMoneyB(item.base)} → ${fmtMoneyB(item.proposed)} (${sign}${fmtMoneyB(item.change)})`;
-        }).join("\n")
-      : "- No discretionary spending changes from baseline.";
-
-    const specialLines = state.specialItems.length
-      ? state.specialItems.map((item, i) => {
-          const costB = toNumber(item.directCost, 0) / 1_000_000_000;
-          const revB = toNumber(item.directRevenue, 0) / 1_000_000_000;
-          return `- ${i + 1}. ${item.name} (${item.type}) — Cost ${fmtMoneyB(costB)}, Revenue ${fmtMoneyB(revB)}, GDP ${item.gdpEffect}, Inflation ${item.inflationEffect}`;
-        }).join("\n")
-      : "- No special appropriations or law/event items added.";
 
     return `## FY${selectedYear} FEDERAL BUDGET PROPOSAL
 
@@ -651,31 +623,31 @@
 - Mandatory Spending: ${fmtMoneyB(baseline.mandatorySpending)}
 - Interest Cost: ${fmtMoneyB(baseline.interestCost)}
 
-### Major Tax Changes
-${taxLines}
+### Full Tax Rate Schedule
+${allTaxLines()}
 
-### Major Discretionary Spending Changes
-${spendingLines}
-
-### Special Laws / Appropriations
-${specialLines}
+### Full Discretionary Spending Schedule
+${allSpendingLines()}
 
 ### Model Note
 Generated locally by APRP Budget Builder. Final adoption requires manual admin review and official sheet entry.`;
   }
 
   function buildTaxRowExport() {
+    const header = "year\ttax_item\tbase_rate\tproposed_rate\tchange_pp";
+
     const rows = state.taxRows.map((item) => {
+      const change = item.proposedRate - item.baseRate;
       return [
         selectedYear,
         item.label,
         fmtPercent(item.baseRate),
         fmtPercent(item.proposedRate),
-        (item.proposedRate - item.baseRate).toFixed(1)
+        change.toFixed(1)
       ].join("\t");
     });
 
-    return ["year\ttax_item\tbase_rate\tproposed_rate\tchange_pp", ...rows].join("\n");
+    return [header, ...rows].join("\n");
   }
 
   function updateExport() {
@@ -692,7 +664,7 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
     card.innerHTML = `
       <div class="eyebrow">FY${safeHTML(selectedYear)} Budget Preview</div>
       <h2>${safeHTML(fmtMoneyB(p.proposedDeficit))}</h2>
-      <p>Projected deficit/surplus after local tax, spending, and special item changes.</p>
+      <p>Projected deficit/surplus after local tax and spending changes.</p>
     `;
   }
 
@@ -701,7 +673,6 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
 
     renderKpis();
     renderPreviewTable();
-    renderSpecialItems();
     updateExport();
     updateHeroCard();
   }
@@ -722,38 +693,6 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
     });
   }
 
-  function setupLawButtons() {
-    $("#add-law-item")?.addEventListener("click", () => {
-      const item = {
-        name: cleanCell($("#law-name")?.value) || `Special Item ${state.specialItems.length + 1}`,
-        type: cleanCell($("#law-type")?.value) || "BILL",
-        directCost: toNumber($("#law-direct-cost")?.value, 0),
-        directRevenue: toNumber($("#law-direct-revenue")?.value, 0),
-        gdpEffect: cleanCell($("#law-gdp-effect")?.value) || "0.00%",
-        inflationEffect: cleanCell($("#law-inflation-effect")?.value) || "0.00%",
-        approvalImpact: toNumber($("#law-approval-impact")?.value, 0),
-        stockImpact: toNumber($("#law-stock-impact")?.value, 0)
-      };
-
-      state.specialItems.push(item);
-
-      if ($("#law-name")) $("#law-name").value = "";
-      if ($("#law-direct-cost")) $("#law-direct-cost").value = "0";
-      if ($("#law-direct-revenue")) $("#law-direct-revenue").value = "0";
-      if ($("#law-gdp-effect")) $("#law-gdp-effect").value = "0.00%";
-      if ($("#law-inflation-effect")) $("#law-inflation-effect").value = "0.00%";
-      if ($("#law-approval-impact")) $("#law-approval-impact").value = "0";
-      if ($("#law-stock-impact")) $("#law-stock-impact").value = "0";
-
-      updateAllOutputs();
-    });
-
-    $("#clear-law-items")?.addEventListener("click", () => {
-      state.specialItems = [];
-      updateAllOutputs();
-    });
-  }
-
   async function copyText(text) {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
@@ -771,6 +710,7 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
   function setupCopyButtons() {
     $("#copy-budget-markdown")?.addEventListener("click", async () => {
       await copyText(buildMarkdownExport());
+
       const btn = $("#copy-budget-markdown");
       if (btn) {
         btn.textContent = "Copied!";
@@ -780,6 +720,7 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
 
     $("#copy-budget-tax-row")?.addEventListener("click", async () => {
       await copyText(buildTaxRowExport());
+
       const btn = $("#copy-budget-tax-row");
       if (btn) {
         btn.textContent = "Copied!";
@@ -823,7 +764,6 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
       copyBaselineIntoState();
 
       setupTabs();
-      setupLawButtons();
       setupCopyButtons();
       setupProposalInputs();
 
