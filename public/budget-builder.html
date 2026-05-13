@@ -46,7 +46,7 @@
 
     .budget-grid {
       display: grid;
-      grid-template-columns: minmax(0, .95fr) minmax(360px, .65fr);
+      grid-template-columns: minmax(0, .95fr) minmax(390px, .68fr);
       gap: 14px;
       align-items: start;
     }
@@ -184,7 +184,7 @@
     .budget-slider-row,
     .budget-spending-row {
       display: grid;
-      grid-template-columns: minmax(230px, .85fr) minmax(220px, 1fr) 90px;
+      grid-template-columns: minmax(240px, .9fr) minmax(220px, 1fr) 92px;
       gap: 10px;
       align-items: center;
       border: 1px solid rgba(15,23,42,.10);
@@ -199,7 +199,6 @@
       font-size: .78rem;
       font-weight: 950;
       line-height: 1.15;
-      text-transform: capitalize;
     }
 
     .budget-slider-row input[type="range"] {
@@ -224,13 +223,13 @@
 
     .budget-export-box {
       width: 100%;
-      min-height: 520px;
+      min-height: 620px;
       border: 1px solid rgba(255,255,255,.14);
       border-radius: 16px;
       background: rgba(2,6,23,.45);
       color: #e5e7eb;
       padding: 12px;
-      font: 700 .8rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font: 700 .78rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       resize: vertical;
       white-space: pre-wrap;
     }
@@ -396,7 +395,7 @@
           <h1 class="hero-title">Budget Builder</h1>
           <p class="hero-subtitle">
             Build a proposed fiscal budget from the public APRP economy model. Adjust tax rates
-            and department spending, then export a full Discord-ready proposal.
+            and department-specific appropriations, then export four full budget markdowns.
           </p>
 
           <div class="hero-actions">
@@ -418,7 +417,7 @@
         <aside class="hero-side-card" id="budget-hero-card">
           <div class="eyebrow">Budget Model</div>
           <h2>Loading builder...</h2>
-          <p>Reading tax, spending, revenue, and fiscal data from the public economy model.</p>
+          <p>Reading tax, revenue, mandatory, discretionary, and fiscal data from public sheets.</p>
         </aside>
       </div>
     </section>
@@ -433,7 +432,7 @@
                 <h2>Build Budget Proposal</h2>
                 <p class="budget-note">
                   This page does not edit the live Google Sheet. It reads the current model, calculates a local preview,
-                  and exports full copy-paste text for review.
+                  and exports four separate budget markdowns for manual posting.
                 </p>
               </div>
               <span class="budget-status" id="budget-load-status">Loading</span>
@@ -447,7 +446,7 @@
 
               <div class="budget-field">
                 <label for="budget-title">Budget Title</label>
-                <input id="budget-title" type="text" value="Federal Budget Proposal" />
+                <input id="budget-title" type="text" value="Federal Budget Package" />
               </div>
 
               <div class="budget-field">
@@ -473,7 +472,7 @@
             <section class="budget-panel">
               <div class="budget-tabs" role="tablist" aria-label="Budget builder sections">
                 <button class="budget-tab is-active" type="button" data-budget-tab="taxes">Tax Rates</button>
-                <button class="budget-tab" type="button" data-budget-tab="spending">Spending</button>
+                <button class="budget-tab" type="button" data-budget-tab="spending">Department Funding</button>
                 <button class="budget-tab" type="button" data-budget-tab="preview">Preview Table</button>
               </div>
 
@@ -482,7 +481,7 @@
                   <div>
                     <div class="eyebrow">Revenue Policy</div>
                     <h3>Tax Rate Sliders</h3>
-                    <p class="budget-note">Every tax from TAX_RATES_BY_YEAR is shown for the selected fiscal year.</p>
+                    <p class="budget-note">Every tax rate from TAX_RATES_BY_YEAR is shown for the selected fiscal year.</p>
                   </div>
                 </div>
 
@@ -494,14 +493,14 @@
               <div class="budget-tab-panel" data-budget-panel="spending">
                 <div class="budget-section-title">
                   <div>
-                    <div class="eyebrow">Discretionary Budget</div>
-                    <h3>Department Spending</h3>
-                    <p class="budget-note">Every department spending field is listed. Values are in billions.</p>
+                    <div class="eyebrow">Department-Specific Appropriations</div>
+                    <h3>Discretionary Funding</h3>
+                    <p class="budget-note">Funding is assigned to the exact department columns used by the sheet.</p>
                   </div>
                 </div>
 
                 <div class="budget-spending-list" id="budget-spending-inputs">
-                  <p class="budget-note">Loading spending data...</p>
+                  <p class="budget-note">Loading department funding...</p>
                 </div>
               </div>
 
@@ -510,7 +509,7 @@
                   <div>
                     <div class="eyebrow">Projection Detail</div>
                     <h3>Budget Preview</h3>
-                    <p class="budget-note">Shows baseline vs. proposed changes from the local builder.</p>
+                    <p class="budget-note">Shows baseline vs. proposed local changes.</p>
                   </div>
                 </div>
 
@@ -534,14 +533,14 @@
 
             <aside class="budget-panel dark" id="budget-export-panel">
               <div class="eyebrow">Export</div>
-              <h2>Budget Proposal Output</h2>
+              <h2>Four Budget Markdowns</h2>
               <p class="budget-note">
-                Export lists every tax rate and every spending field, not just changed items.
+                Export includes tax/revenue, mandatory rules, defense/security/agency funding, and domestic department funding.
               </p>
 
               <div class="budget-action-row">
-                <button class="btn btn-blue" type="button" id="copy-budget-markdown">Copy Markdown</button>
-                <button class="btn btn-outline" type="button" id="copy-budget-tax-row">Copy Tax Row</button>
+                <button class="btn btn-blue" type="button" id="copy-budget-markdown">Copy All Markdown</button>
+                <button class="btn btn-outline" type="button" id="copy-budget-tax-row">Copy Tax Rows</button>
                 <button class="btn btn-outline" type="button" id="reset-budget-builder">Reset</button>
               </div>
 
