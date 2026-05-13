@@ -1,9 +1,12 @@
 /* APRP Federal Archive — Economy Page
    OMB-style compact dashboard.
-   Monthly charts default to ALL records, with toggle for Last 12 Months.
+   Yearly data: WEB_ECON
+   Monthly data: MONTHLY_ENGINE
 */
 
 (function () {
+  "use strict";
+
   const APRP = window.APRP || {};
 
   const fetchSheets = APRP.fetchSheets;
@@ -23,8 +26,14 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
+  const toBool = (value) => {
+    const normalized = cleanCell(value).toLowerCase();
+    return ["true", "yes", "y", "1", "live", "on", "previous"].includes(normalized);
+  };
+
   let ECON_ROWS = [];
   let MONTHLY_ROWS = [];
+  let CONTROL_ROWS = [];
   let MONTHLY_RANGE = "all";
 
   const YEARLY_STATS = [
@@ -37,17 +46,62 @@
     { id: "debt_gdp", title: "Debt-to-GDP", keys: ["debt_to_gdp", "debt_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
     { id: "deficit_gdp", title: "Deficit-to-GDP", keys: ["deficit_gdp", "deficit_to_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
     { id: "inflation", title: "Inflation", keys: ["inflation", "inflation_rate"], suffix: "%", group: "Prices", changeType: "pp" },
-    { id: "median_wage", title: "Median Wage", keys: ["median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" },
+    { id: "median_wage", title: "Median Wage", keys: ["median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" }
   ];
 
   const MONTHLY_STATS = [
-    { id: "approval", title: "POTUS Approval", keys: ["potus_approval", "approval", "approval_rating"], suffix: "%", group: "Political", changeType: "pp" },
-    { id: "oil", title: "Oil Price", keys: ["oil_price", "oil", "crude_oil"], prefix: "$", group: "Markets", changeType: "absolute" },
-    { id: "job_creation", title: "Job Creation", keys: ["job_creation", "jobs", "jobs_created", "net_jobs"], group: "Labor", changeType: "absolute" },
-    { id: "stock", title: "Stock Index", keys: ["stock_market_index", "stock_market_in", "stock", "stocks", "stock_index", "market", "sp500"], group: "Markets", changeType: "absolute" },
+    {
+      id: "gdp_monthly",
+      title: "Monthly GDP",
+      keys: ["gdp_monthly", "monthly_gdp", "gdp_month"],
+      prefix: "$",
+      group: "Output",
+      changeType: "absolute"
+    },
+    {
+      id: "approval",
+      title: "POTUS Approval",
+      keys: ["potus_approval", "approval", "approval_rating"],
+      suffix: "%",
+      group: "Political",
+      changeType: "pp"
+    },
+    {
+      id: "oil",
+      title: "Oil Price",
+      keys: ["oil_price", "oil", "crude_oil"],
+      prefix: "$",
+      group: "Markets",
+      changeType: "absolute"
+    },
+    {
+      id: "job_creation",
+      title: "Job Creation",
+      keys: ["job_creation_monthly", "job_creation", "jobs", "jobs_created", "net_jobs"],
+      group: "Labor",
+      changeType: "absolute"
+    },
+    {
+      id: "stock",
+      title: "Stock Index",
+      keys: ["stock_market_index", "stock_market_in", "stock", "stocks", "stock_index", "market", "sp500"],
+      group: "Markets",
+      changeType: "absolute"
+    }
   ];
 
-  const TOP_YEARLY_TILES = ["gdp", "debt", "growth", "job_creation", "deficit", "unemployment", "debt_gdp", "deficit_gdp", "inflation", "median_wage"];
+  const TOP_YEARLY_TILES = [
+    "gdp",
+    "debt",
+    "growth",
+    "job_creation",
+    "deficit",
+    "unemployment",
+    "debt_gdp",
+    "deficit_gdp",
+    "inflation",
+    "median_wage"
+  ];
 
   function getEl(selector) {
     return document.querySelector(selector);
@@ -65,6 +119,17 @@
     return toNumber(firstValue(row, keys, ""), null);
   }
 
+  function getControlValue(key, fallback = "") {
+    const target = cleanCell(key).toLowerCase();
+
+    const found = CONTROL_ROWS.find((row) => {
+      const rowKey = cleanCell(row.setting || row.key || row.name).toLowerCase();
+      return rowKey === target;
+    });
+
+    return found ? cleanCell(found.value) : fallback;
+  }
+
   function yearLabel(row, index = 0) {
     return firstValue(row, ["year", "date", "fiscal_year"], String(index + 1));
   }
@@ -76,15 +141,21 @@
   }
 
   function monthLabel(row, index = 0) {
+    const period = firstValue(row, ["period"], "");
+    if (period) return period;
+
     const label = firstValue(row, ["label", "month_label", "period_label"], "");
     if (label) return label;
 
-    const month = firstValue(row, ["month", "date", "period"], "");
+    const monthName = firstValue(row, ["month_name"], "");
+    const month = firstValue(row, ["month"], "");
     const year = firstValue(row, ["year"], "");
 
-    if (month && year && !String(month).includes(String(year))) {
-      const monthName = monthNumberToName(month);
-      return `${monthName || month} ${year}`;
+    if (monthName && year) return `${monthName} ${year}`;
+
+    if (month && year) {
+      const fixedMonth = monthNumberToName(month) || month;
+      return `${fixedMonth} ${year}`;
     }
 
     return month || year || String(index + 1);
@@ -128,14 +199,44 @@
     }
   }
 
+  function filterMonthlyEngineRows(rows) {
+    const withData = rows.filter((row) => {
+      return MONTHLY_STATS.some((stat) => getValue(row, stat.keys) !== null);
+    });
+
+    const hasShowColumn = withData.some((row) => cleanCell(row.show_on_site) !== "");
+
+    if (hasShowColumn) {
+      const visible = withData.filter((row) => toBool(row.show_on_site));
+      if (visible.length) return visible;
+    }
+
+    const currentYear = toNumber(getControlValue("current_year", ""), null);
+    const currentMonth = toNumber(getControlValue("current_month", ""), null);
+
+    if (currentYear && currentMonth) {
+      const currentPeriod = currentYear * 100 + currentMonth;
+
+      return withData.filter((row) => {
+        const periodNum = toNumber(row.period_num, null);
+        if (periodNum === null) return true;
+        return periodNum <= currentPeriod;
+      });
+    }
+
+    return withData;
+  }
+
   async function loadData() {
-    const [econ, monthly] = await Promise.all([
+    const [econ, monthlyEngine, controlConfig] = await Promise.all([
       safeFetch("WEB_ECON"),
-      safeFetch("WEB_MONTHLY"),
+      safeFetch("MONTHLY_ENGINE"),
+      safeFetch("CONTROL_CONFIG")
     ]);
 
     ECON_ROWS = econ || [];
-    MONTHLY_ROWS = monthly || [];
+    CONTROL_ROWS = controlConfig || [];
+    MONTHLY_ROWS = filterMonthlyEngineRows(monthlyEngine || []);
   }
 
   function yearlyPoints(stat) {
@@ -158,11 +259,26 @@
 
   function latestMacroRow() {
     const valid = ECON_ROWS.filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null));
+
+    const currentYear = toNumber(getControlValue("current_year", ""), null);
+    if (currentYear) {
+      const current = valid.find((row) => toNumber(row.year, NaN) === currentYear);
+      if (current) return current;
+    }
+
     return valid[valid.length - 1] || {};
   }
 
   function previousMacroRow() {
     const valid = ECON_ROWS.filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null));
+    const latest = latestMacroRow();
+    const latestYear = toNumber(latest.year, null);
+
+    if (latestYear) {
+      const previous = valid.find((row) => toNumber(row.year, NaN) === latestYear - 1);
+      if (previous) return previous;
+    }
+
     return valid[valid.length - 2] || {};
   }
 
@@ -830,6 +946,7 @@
     const latest = latestMacroRow();
     const previous = previousMacroRow();
     const year = firstValue(latest, ["year", "date"], "Latest Year");
+    const currentMonth = getControlValue("current_month", "");
 
     const tileStats = TOP_YEARLY_TILES
       .map((id) => YEARLY_STATS.find((stat) => stat.id === id))
@@ -843,7 +960,7 @@
               <div>
                 <div class="econ-eyebrow">Office of Budget Management</div>
                 <h2>Macro Dashboard</h2>
-                <p>${safeHTML(year)} fiscal snapshot. Movement is shown as absolute movement or percentage points.</p>
+                <p>${safeHTML(year)} fiscal snapshot${currentMonth ? ` through month ${safeHTML(currentMonth)}` : ""}. Monthly charts now read from MONTHLY_ENGINE.</p>
               </div>
             </div>
 
@@ -859,7 +976,7 @@
               <aside class="econ-panel dark">
                 <div class="econ-eyebrow">Monthly Movement</div>
                 <h3>Latest Moves</h3>
-                <p class="econ-note">Uses the latest 13 monthly records for 1M and 12M movement.</p>
+                <p class="econ-note">Uses MONTHLY_ENGINE visible records for 1M and 12M movement.</p>
                 <div class="econ-movement-list">
                   ${MONTHLY_STATS.map(movementRow).join("") || `<p class="econ-note">No monthly records found.</p>`}
                 </div>
@@ -883,8 +1000,8 @@
             <div class="econ-heading">
               <div>
                 <div class="econ-eyebrow">Monthly Charts</div>
-                <h2>Approval, Markets & Jobs</h2>
-                <p>Default view shows all monthly records. Use Last 12 Months for a shorter dashboard.</p>
+                <h2>GDP, Approval, Markets & Jobs</h2>
+                <p>MONTHLY_ENGINE records. Default view shows all visible monthly records. Use Last 12 Months for a shorter dashboard.</p>
               </div>
               <div>
                 <div class="econ-filter-bar" id="econ-monthly-range" style="margin-bottom:6px;"></div>
@@ -916,7 +1033,7 @@
 
     const monthlyFilters = getEl("#econ-monthly-filters");
     if (monthlyFilters) {
-      ["All", "Political", "Markets", "Labor"].forEach((group, index) => {
+      ["All", "Output", "Political", "Markets", "Labor"].forEach((group, index) => {
         addFilterButton(monthlyFilters, group, index === 0, renderMonthlyCharts);
       });
     }
@@ -937,7 +1054,7 @@
     heroCard.innerHTML = `
       <div class="eyebrow">OBM Record</div>
       <h2>${safeHTML(year)} Economy Loaded</h2>
-      <p>${safeHTML(yearlyCount)} yearly rows and ${safeHTML(monthlyCount)} monthly rows loaded.</p>
+      <p>${safeHTML(yearlyCount)} yearly rows and ${safeHTML(monthlyCount)} MONTHLY_ENGINE rows loaded.</p>
     `;
   }
 
