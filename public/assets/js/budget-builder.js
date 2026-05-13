@@ -68,7 +68,7 @@
     ["state_foreign_affairs_spending", "Department of State and Foreign Affairs"],
     ["commerce_spending", "Department of Commerce"],
     ["labor_spending", "Department of Labor"],
-    ["nasa_spending", "NASA"],
+    ["nasa_spending", "National Aeronautics and Space Administration"],
     ["sba_spending", "Small Business Administration"],
     ["other_agencies_spending", "Other Agencies"],
     ["general_government_spending", "General Government"]
@@ -628,12 +628,6 @@
     }).join("");
   }
 
-  function tableRows(fields, row, formatter = fmtMoneyB) {
-    return fields.map(([key, label]) => {
-      return `| ${label} | ${formatter(toNumber(row?.[key], 0))} |`;
-    }).join("\n");
-  }
-
   function revenueTableRows() {
     const revenue = baseline.revenue || {};
     return REVENUE_FIELDS.map(([key, label]) => {
@@ -665,13 +659,12 @@
     return baseline.mandatory?.[key] ?? fallback;
   }
 
-  function buildTaxBudgetMarkdown() {
-    const p = calculateProjection();
-    const title = cleanCell($("#budget-title")?.value) || "Federal Budget Package";
+  function buildBudgetHeader(actTitle, shortTitle) {
     const sponsor = cleanCell($("#budget-sponsor")?.value) || "Unspecified";
     const party = cleanCell($("#budget-party")?.value) || "Unspecified";
+    const packageTitle = cleanCell($("#budget-title")?.value) || "Federal Budget Package";
 
-    return `TAX RATES AND REVENUE BUDGET ACT
+    return `${actTitle}
 
 
 IN THE UNITED STATES CONGRESS
@@ -690,40 +683,64 @@ Title I - General Information
 
 
 SECTION 101. SHORT TITLE.
-This Act may be cited as the "FY${selectedYear} Tax Rates and Revenue Budget."
+This Act may be cited as the "${shortTitle}."
 
 
-SECTION 102. PURPOSE.
-The purpose of this Act is to establish the federal tax rate schedule, revenue assumptions, and projected receipts for Fiscal Year ${selectedYear}, including individual income taxes, corporate taxes, payroll taxes, capital gains taxes, excise taxes, UCare revenue, direct revenue, and event revenue impacts.
+SECTION 102. BUDGET PACKAGE.
+This Act forms part of the "${packageTitle}" for Fiscal Year ${selectedYear}.`;
+  }
+
+  function buildTaxBudgetMarkdown() {
+    const p = calculateProjection();
+
+    return `${buildBudgetHeader(
+      "TAX RATES AND FEDERAL REVENUE BUDGET ACT",
+      `FY${selectedYear} Tax Rates and Federal Revenue Budget`
+    )}
 
 
-SECTION 103. FINDINGS.
+SECTION 103. PURPOSE.
+The purpose of this Act is to establish the federal tax rate schedule, revenue assumptions, and projected receipts for Fiscal Year ${selectedYear}. This Act shall govern individual income tax rates, corporate tax rates, payroll taxes, capital gains taxes, sales taxes, excise taxes, UCare revenue, direct revenue, and event-related revenue impacts used by the Office of Budget Management.
+
+
+SECTION 104. FINDINGS.
 Congress finds that:
-(a) Federal tax policy must be clearly recorded each fiscal year to support accurate budget projections.
-(b) Individual, corporate, payroll, capital gains, excise, and other revenues directly affect the federal deficit and debt outlook.
-(c) Congress has a responsibility to certify the revenue basis used by the Office of Budget Management.
-(d) Transparent revenue schedules improve accountability for taxpayers, agencies, and Congress.
+(a) Federal revenue policy must be recorded clearly to support accurate budget, deficit, and debt projections.
+(b) Tax rates affect workers, households, businesses, investors, consumers, and federal receipts.
+(c) Congress must distinguish between projected revenue by category and the tax rates used to generate such revenue.
+(d) Transparent tax and revenue schedules improve accountability for taxpayers, departments, and budget authorities.
+(e) The Office of Budget Management requires a certified revenue schedule for the fiscal year before final budget scoring.
 
 
-SECTION 104. DEFINITIONS.
+SECTION 105. DEFINITIONS.
 For the purposes of this Act:
-"Revenue category" means any tax, duty, payroll contribution, special charge, or direct revenue source recorded in the federal revenue engine.
-"Fiscal year" means Fiscal Year ${selectedYear}.
-"Office of Budget Management" means the fiscal authority responsible for recording APRP budget outputs.
+(a) "Revenue category" means any federal tax, payroll contribution, tariff, duty, direct revenue source, or fiscal receipt category recorded in the federal revenue engine.
+(b) "Tax rate schedule" means the applicable rate for each taxable bracket or category.
+(c) "Projected revenue" means estimated receipts for Fiscal Year ${selectedYear}.
+(d) "Fiscal year" means Fiscal Year ${selectedYear}.
 
 
-Title II - Bill Content
+Title II - Tax Rate Schedule
 
 
 SECTION 201. TAX RATE SCHEDULE.
-The following tax rates are authorized for Fiscal Year ${selectedYear}:
+The following federal tax rates are authorized for Fiscal Year ${selectedYear}:
 
 | Tax Category | Baseline Rate | Proposed Rate | Change |
 |---|---:|---:|---:|
 ${taxRateRows()}
 
 
-SECTION 202. PROJECTED REVENUE BY CATEGORY.
+SECTION 202. RATE ADMINISTRATION.
+(a) The Department of Treasury shall administer the tax rates established under Section 201.
+(b) Any rate not expressly changed by this Act shall remain at its baseline fiscal-year level.
+(c) The Office of Budget Management shall use the proposed rates in Section 201 for budget scoring.
+
+
+Title III - Revenue Certification
+
+
+SECTION 301. PROJECTED REVENUE BY CATEGORY.
 The following revenue projections are certified for Fiscal Year ${selectedYear}:
 
 | Revenue Category | Projected Revenue |
@@ -731,7 +748,7 @@ The following revenue projections are certified for Fiscal Year ${selectedYear}:
 ${revenueTableRows()}
 
 
-SECTION 203. TOTAL REVENUE CERTIFICATION.
+SECTION 302. TOTAL REVENUE CERTIFICATION.
 The Office of Budget Management shall record the following revenue totals:
 
 | Revenue Measure | Amount |
@@ -742,73 +759,74 @@ The Office of Budget Management shall record the following revenue totals:
 | Revenue as % of GDP | ${fmtPercent(toNumber(baseline.revenue?.revenue_pct_gdp, baseline.gdp ? (p.proposedRevenue / baseline.gdp) * 100 : 0))} |
 
 
-SECTION 204. EFFECTIVE DATE.
+SECTION 303. REPORTING.
+The Secretary of the Treasury shall submit a fiscal-year revenue report to Congress showing receipts by category, rate changes, direct revenue adjustments, and event-related revenue impacts.
+
+
+SECTION 304. EFFECTIVE DATE.
 This Act shall take effect upon enactment and shall apply to Fiscal Year ${selectedYear}.`;
   }
 
   function buildMandatoryMarkdown() {
-    return `MANDATORY PROGRAMS AND FEDERAL OBLIGATIONS ACT
+    return `${buildBudgetHeader(
+      "MANDATORY PROGRAMS AND FEDERAL OBLIGATIONS ACT",
+      `FY${selectedYear} Mandatory Programs and Federal Obligations Act`
+    )}
 
 
-IN THE UNITED STATES CONGRESS
-IN THE YEAR ${selectedYear}
+SECTION 103. PURPOSE.
+The purpose of this Act is to certify mandatory spending rules, eligibility assumptions, demographic assumptions, benefit formulas, and continuing federal obligations for Fiscal Year ${selectedYear}. This Act shall govern Social Security, Medicare, Medicaid, SNAP, child health obligations, FCWA obligations, federal retirement, SSI, and other mandatory obligations recorded in the mandatory spending engine.
 
 
-Author: ${cleanCell($("#budget-sponsor")?.value) || "Unspecified"}
-Sponsor(s): ${cleanCell($("#budget-party")?.value) || "Unspecified"}
-Co-Sponsors:
-
-
-Be it enacted by the Senate and House of Representatives of the United States of America in Congress assembled,
-
-
-Title I - General Information
-
-
-SECTION 101. SHORT TITLE.
-This Act may be cited as the "FY${selectedYear} Mandatory Programs and Federal Obligations Act."
-
-
-SECTION 102. PURPOSE.
-The purpose of this Act is to certify mandatory spending rules, demographic assumptions, eligibility formulas, benefit formulas, and entitlement obligations for Fiscal Year ${selectedYear}.
-
-
-SECTION 103. FINDINGS.
+SECTION 104. FINDINGS.
 Congress finds that:
-(a) Mandatory programs are continuing legal obligations and must be recorded separately from discretionary appropriations.
-(b) Social Security, Medicare, Medicaid, SNAP, child health, FCWA, retirement, SSI, and related obligations must be calculated under clear rules.
-(c) Demographic assumptions such as population, over-65 population, under-18 population, and median wage affect mandatory spending projections.
-(d) Congress must record both formula rules and final costs for federal obligations.
+(a) Mandatory spending is driven by eligibility, statutory formulas, demographic trends, and continuing legal obligations.
+(b) Mandatory spending must be recorded separately from discretionary appropriations.
+(c) Population, over-65 population, under-18 population, and median wage assumptions materially affect entitlement costs.
+(d) Congress must certify benefit rules and final spending totals to support long-term fiscal planning.
+(e) Any alteration to eligibility, benefit levels, or automatic growth rules may materially affect the federal deficit and debt.
 
 
-SECTION 104. DEFINITIONS.
+SECTION 105. DEFINITIONS.
 For the purposes of this Act:
-"Mandatory spending" means spending required by eligibility rules, benefit formulas, automatic obligations, or existing law.
-"Eligibility percentage" means the share of a population group eligible for a mandatory program.
-"Benefit formula" means the wage, population, poverty, age, or usage-based rule used to estimate cost.
-"Fiscal year" means Fiscal Year ${selectedYear}.
+(a) "Mandatory spending" means federal spending required by law, eligibility rule, benefit formula, or automatic obligation.
+(b) "Eligibility percentage" means the share of a population group eligible for a federal benefit.
+(c) "Benefit formula" means the wage, age, poverty, population, or usage-based calculation used to estimate federal cost.
+(d) "Fiscal year" means Fiscal Year ${selectedYear}.
 
 
-Title II - Bill Content
+Title II - Demographic and Economic Assumptions
 
 
 SECTION 201. DEMOGRAPHIC AND WAGE ASSUMPTIONS.
+The following demographic and wage assumptions shall be used for mandatory spending calculations:
 
 | Assumption | Value |
 |---|---:|
 | Population | ${fmtPlain(mandatoryValue("population"))} |
 | Over-65 Population | ${fmtPlain(mandatoryValue("over65_population"))} |
 | Under-18 Population | ${fmtPlain(mandatoryValue("under18_population"))} |
-| Final Median Wage | ${fmtMoneyB(toNumber(mandatoryValue("final_median_wage"), 0) / 1000000000)} |
+| Final Median Wage | ${fmtPlain(mandatoryValue("final_median_wage"))} |
 
 
-SECTION 202. SOCIAL SECURITY, MEDICARE, AND MEDICAID.
+Title III - Core Entitlement Programs
+
+
+SECTION 301. SOCIAL SECURITY.
+The following Social Security assumptions and costs are certified:
+
+| Rule / Cost Item | Value |
+|---|---:|
+| Eligibility % Over 65 | ${fmtPercent(toNumber(mandatoryValue("ss_eligibility_pct_over65"), 0))} |
+| Base Cost % Median Wage | ${fmtPercent(toNumber(mandatoryValue("ss_base_cost_pct_median_wage"), 0))} |
+| Social Security Cost | ${fmtMoneyB(toNumber(mandatoryValue("social_security_cost"), 0))} |
+
+
+SECTION 302. MEDICARE AND MEDICAID.
+The following federal health entitlement assumptions and costs are certified:
 
 | Program / Rule | Value |
 |---|---:|
-| Social Security Eligibility % Over 65 | ${fmtPercent(toNumber(mandatoryValue("ss_eligibility_pct_over65"), 0))} |
-| Social Security Base Cost % Median Wage | ${fmtPercent(toNumber(mandatoryValue("ss_base_cost_pct_median_wage"), 0))} |
-| Social Security Cost | ${fmtMoneyB(toNumber(mandatoryValue("social_security_cost"), 0))} |
 | Medicare Eligibility % Over 65 | ${fmtPercent(toNumber(mandatoryValue("medicare_eligibility_pct_over65"), 0))} |
 | Medicare Base Cost % Median Wage | ${fmtPercent(toNumber(mandatoryValue("medicare_base_cost_pct_median_wage"), 0))} |
 | Health Cost Growth Extra | ${fmtPercent(toNumber(mandatoryValue("health_cost_growth_extra"), 0))} |
@@ -818,7 +836,8 @@ SECTION 202. SOCIAL SECURITY, MEDICARE, AND MEDICAID.
 | Medicaid Cost | ${fmtMoneyB(toNumber(mandatoryValue("medicaid_cost"), 0))} |
 
 
-SECTION 203. SNAP, CHILD HEALTH, FCWA, RETIREMENT, AND SSI.
+SECTION 303. SNAP, CHILD HEALTH, FCWA, RETIREMENT, AND SSI.
+The following additional mandatory obligations are certified:
 
 | Program / Rule | Value |
 |---|---:|
@@ -841,7 +860,11 @@ SECTION 203. SNAP, CHILD HEALTH, FCWA, RETIREMENT, AND SSI.
 | SSI Cost | ${fmtMoneyB(toNumber(mandatoryValue("ssi_cost"), 0))} |
 
 
-SECTION 204. TOTAL MANDATORY CERTIFICATION.
+Title IV - Mandatory Spending Certification
+
+
+SECTION 401. TOTAL MANDATORY CERTIFICATION.
+The Office of Budget Management shall record the following mandatory totals:
 
 | Measure | Value |
 |---|---:|
@@ -851,55 +874,45 @@ SECTION 204. TOTAL MANDATORY CERTIFICATION.
 | Mandatory Spending % GDP | ${fmtPercent(toNumber(mandatoryValue("mandatory_spending_pct_gdp"), baseline.gdp ? (baseline.mandatorySpending / baseline.gdp) * 100 : 0))} |
 
 
-SECTION 205. EFFECTIVE DATE.
+SECTION 402. REPORTING.
+The Office of Budget Management shall publish a mandatory spending report identifying eligibility assumptions, formula assumptions, demographic assumptions, and final program costs.
+
+
+SECTION 403. EFFECTIVE DATE.
 This Act shall take effect upon enactment and shall apply to Fiscal Year ${selectedYear}.`;
   }
 
   function buildDefenseAgencyMarkdown() {
-    return `DEFENSE, HOMELAND, JUSTICE, STATE, AND AGENCY APPROPRIATIONS ACT
+    return `${buildBudgetHeader(
+      "DEFENSE, HOMELAND, JUSTICE, STATE, AND AGENCY APPROPRIATIONS ACT",
+      `FY${selectedYear} Defense, Homeland, Justice, State, and Agency Appropriations Act`
+    )}
 
 
-IN THE UNITED STATES CONGRESS
-IN THE YEAR ${selectedYear}
+SECTION 103. PURPOSE.
+The purpose of this Act is to provide department-specific discretionary appropriations for defense, treasury, veterans affairs, homeland security, justice, state and foreign affairs, commerce, labor, NASA, the Small Business Administration, other agencies, and general government for Fiscal Year ${selectedYear}.
 
 
-Author: ${cleanCell($("#budget-sponsor")?.value) || "Unspecified"}
-Sponsor(s): ${cleanCell($("#budget-party")?.value) || "Unspecified"}
-Co-Sponsors:
-
-
-Be it enacted by the Senate and House of Representatives of the United States of America in Congress assembled,
-
-
-Title I - General Information
-
-
-SECTION 101. SHORT TITLE.
-This Act may be cited as the "FY${selectedYear} Defense, Homeland, Justice, State, and Agency Appropriations Act."
-
-
-SECTION 102. PURPOSE.
-The purpose of this Act is to provide department-specific discretionary appropriations for defense, treasury, veterans affairs, homeland security, justice, state and foreign affairs, commerce, labor, NASA, SBA, other agencies, and general government for Fiscal Year ${selectedYear}.
-
-
-SECTION 103. FINDINGS.
+SECTION 104. FINDINGS.
 Congress finds that:
 (a) National defense, homeland security, justice, foreign affairs, and federal administration require clear annual appropriations.
-(b) Department-specific appropriations improve accountability and prevent vague or untracked spending.
-(c) Congress must record each department under the exact fiscal category used by the budget sheet.
-(d) Transfers between departments should be limited unless authorized by law.
+(b) Department-specific funding improves fiscal transparency and prevents vague spending authorizations.
+(c) Congress must record appropriations under the exact department categories used by the discretionary spending engine.
+(d) Agencies funded under this Act must operate within their appropriated levels unless Congress authorizes supplemental funding.
+(e) Transfers between departments should be limited and subject to congressional notice.
 
 
-SECTION 104. DEFINITIONS.
+SECTION 105. DEFINITIONS.
 For the purposes of this Act:
-"Department-specific appropriation" means funding assigned to a named department or agency category in the discretionary spending engine.
-"Fiscal year" means Fiscal Year ${selectedYear}.
+(a) "Department-specific appropriation" means funding assigned to a named department or agency category in the discretionary spending engine.
+(b) "Agency" means any department, bureau, office, administration, or federal entity funded under this Act.
+(c) "Fiscal year" means Fiscal Year ${selectedYear}.
 
 
-Title II - Bill Content
+Title II - Department-Specific Appropriations
 
 
-SECTION 201. DEPARTMENT-SPECIFIC APPROPRIATIONS.
+SECTION 201. APPROPRIATIONS.
 The following appropriations are authorized for Fiscal Year ${selectedYear}:
 
 | Department / Agency | Baseline | Proposed | Change |
@@ -907,59 +920,53 @@ The following appropriations are authorized for Fiscal Year ${selectedYear}:
 ${spendingRows(DEFENSE_AGENCY_FIELDS)}
 
 
-SECTION 202. OVERSIGHT.
-Each department funded under this Act shall administer funds only for authorized federal purposes. Transfers between departments shall require congressional notice unless emergency authority is expressly granted.
+SECTION 202. DEPARTMENTAL ADMINISTRATION.
+(a) Each department funded under this Act shall administer funds only for its authorized federal purpose.
+(b) No department may transfer more than five percent of its appropriation to another department without congressional notice.
+(c) Emergency transfers may be permitted only for national security, disaster response, continuity of government, or urgent public safety needs.
 
 
-SECTION 203. EFFECTIVE DATE.
+SECTION 203. OVERSIGHT AND REPORTING.
+(a) Each department shall submit an annual budget execution report to Congress and the Office of Budget Management.
+(b) Reports shall include obligations, unobligated balances, major procurement, program delays, and cost overruns.
+(c) The Government Accountability Office may audit any department receiving appropriations under this Act.
+
+
+SECTION 204. EFFECTIVE DATE.
 This Act shall take effect upon enactment and shall apply to Fiscal Year ${selectedYear}.`;
   }
 
   function buildDomesticMarkdown() {
-    return `HEALTH, EDUCATION, ENERGY, INFRASTRUCTURE, AGRICULTURE, INTERIOR, EPA, AND HUD APPROPRIATIONS ACT
+    return `${buildBudgetHeader(
+      "HEALTH, EDUCATION, ENERGY, INFRASTRUCTURE, AGRICULTURE, INTERIOR, EPA, AND HUD APPROPRIATIONS ACT",
+      `FY${selectedYear} Domestic Investment and Public Services Appropriations Act`
+    )}
 
 
-IN THE UNITED STATES CONGRESS
-IN THE YEAR ${selectedYear}
-
-
-Author: ${cleanCell($("#budget-sponsor")?.value) || "Unspecified"}
-Sponsor(s): ${cleanCell($("#budget-party")?.value) || "Unspecified"}
-Co-Sponsors:
-
-
-Be it enacted by the Senate and House of Representatives of the United States of America in Congress assembled,
-
-
-Title I - General Information
-
-
-SECTION 101. SHORT TITLE.
-This Act may be cited as the "FY${selectedYear} Domestic Investment and Public Services Appropriations Act."
-
-
-SECTION 102. PURPOSE.
+SECTION 103. PURPOSE.
 The purpose of this Act is to provide department-specific discretionary appropriations for education, health and social administration, transportation, interior and natural resources, agriculture, energy, housing and urban development, and environmental protection for Fiscal Year ${selectedYear}.
 
 
-SECTION 103. FINDINGS.
+SECTION 104. FINDINGS.
 Congress finds that:
-(a) Domestic department funding must be listed by exact department and agency category.
-(b) Education, health, transportation, agriculture, energy, interior, housing, and environmental protection directly affect public welfare and economic stability.
-(c) Congress must record domestic appropriations transparently for budget, deficit, and debt projections.
-(d) Department funding shall be administered only for its authorized public purpose.
+(a) Domestic department funding must be recorded under exact department and agency categories.
+(b) Education, health, transportation, agriculture, energy, housing, environmental protection, and natural resources directly affect public welfare and economic stability.
+(c) Department-specific appropriations improve accountability, budget scoring, and program oversight.
+(d) Domestic investment must be measurable by department, fiscal impact, and public outcome.
+(e) Congress must distinguish recurring domestic appropriations from mandatory benefits and emergency spending.
 
 
-SECTION 104. DEFINITIONS.
+SECTION 105. DEFINITIONS.
 For the purposes of this Act:
-"Domestic investment" means department-specific discretionary funding for public welfare, infrastructure, education, health, natural resources, energy, agriculture, housing, and environmental protection.
-"Fiscal year" means Fiscal Year ${selectedYear}.
+(a) "Domestic investment" means department-specific discretionary funding for public welfare, infrastructure, education, health, natural resources, energy, agriculture, housing, and environmental protection.
+(b) "Department-specific appropriation" means a funding amount assigned to a named department or agency category in the discretionary spending engine.
+(c) "Fiscal year" means Fiscal Year ${selectedYear}.
 
 
-Title II - Bill Content
+Title II - Department-Specific Appropriations
 
 
-SECTION 201. DEPARTMENT-SPECIFIC APPROPRIATIONS.
+SECTION 201. APPROPRIATIONS.
 The following appropriations are authorized for Fiscal Year ${selectedYear}:
 
 | Department / Agency | Baseline | Proposed | Change |
@@ -978,11 +985,19 @@ The Office of Budget Management shall record the following discretionary totals:
 | Discretionary Spending % GDP | ${fmtPercent(baseline.gdp ? (calculateProjection().proposedDiscretionary / baseline.gdp) * 100 : 0)} |
 
 
-SECTION 203. OVERSIGHT.
-Each department funded under this Act shall administer funds only for authorized domestic purposes. Domestic investment funds shall be reported by department, program area, and projected fiscal impact.
+SECTION 203. DEPARTMENTAL ADMINISTRATION.
+(a) Each department funded under this Act shall administer funds only for its authorized domestic purpose.
+(b) Domestic investment funds shall be reported by department, program area, and projected fiscal impact.
+(c) Projects or programs exceeding thresholds established by Congress shall include cost estimates, completion timelines, and performance metrics.
 
 
-SECTION 204. EFFECTIVE DATE.
+SECTION 204. OVERSIGHT AND REPORTING.
+(a) Each department shall submit an annual budget execution report to Congress and the Office of Budget Management.
+(b) Reports shall include spending totals, project outcomes, state or regional impacts where applicable, program delays, cost overruns, and unmet needs.
+(c) Funds failing to meet reporting requirements may be subject to audit, rescission, or reauthorization review.
+
+
+SECTION 205. EFFECTIVE DATE.
 This Act shall take effect upon enactment and shall apply to Fiscal Year ${selectedYear}.`;
   }
 
@@ -991,11 +1006,11 @@ This Act shall take effect upon enactment and shall apply to Fiscal Year ${selec
 
     return [
       buildTaxBudgetMarkdown(),
-      "\n\n---\n\n",
+      "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n",
       buildMandatoryMarkdown(),
-      "\n\n---\n\n",
+      "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n",
       buildDefenseAgencyMarkdown(),
-      "\n\n---\n\n",
+      "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n",
       buildDomesticMarkdown()
     ].join("");
   }
