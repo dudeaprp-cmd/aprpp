@@ -5,6 +5,7 @@
     { label: "Home", href: "./index.html", key: "home" },
     { label: "Government", href: "./government.html", key: "government" },
     { label: "Economy", href: "./economy.html", key: "economy" },
+    { label: "Budget", href: "./budget-builder.html", key: "budget" },
     { label: "Timeline", href: "./timeline.html", key: "timeline" },
     { label: "Presidents", href: "./hall-of-presidents.html", key: "presidents" },
     { label: "Elections", href: "./elections.html", key: "elections" },
@@ -17,6 +18,7 @@
     { label: "Home", href: "./index.html", key: "home" },
     { label: "Gov", href: "./government.html", key: "government" },
     { label: "Econ", href: "./economy.html", key: "economy" },
+    { label: "Budget", href: "./budget-builder.html", key: "budget" },
     { label: "Pres", href: "./hall-of-presidents.html", key: "presidents" },
     { label: "Live", href: "./live-results.html", key: "live", live: true }
   ];
@@ -33,6 +35,7 @@
       "index.html": "home",
       "government.html": "government",
       "economy.html": "economy",
+      "budget-builder.html": "budget",
       "timeline.html": "timeline",
       "hall-of-presidents.html": "presidents",
       "elections.html": "elections",
