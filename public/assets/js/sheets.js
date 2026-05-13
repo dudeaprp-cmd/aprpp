@@ -17,6 +17,7 @@
   }
 
   const SHEET_URLS = {
+    /* Existing public website sheets */
     WEB_DISTRICTS: csvUrl("54284877"),
     WEB_SCHEDULE: csvUrl("1653914288"),
     WEB_POTUS: csvUrl("901665208"),
@@ -24,7 +25,15 @@
     WEB_CONGRESSELECTION: csvUrl("1659353703"),
     WEB_EVENTS: csvUrl("529032081"),
     WEB_ECON: csvUrl("141774572"),
-    WEB_MONTHLY: csvUrl("176907832"),
+
+    /*
+      IMPORTANT:
+      WEB_MONTHLY now points to MONTHLY_ENGINE.
+      This keeps old pages working while new economy.js reads MONTHLY_ENGINE directly.
+    */
+    WEB_MONTHLY: csvUrl("1827825411"),
+    MONTHLY_ENGINE: csvUrl("1827825411"),
+
     WEB_SEN: csvUrl("1840346777"),
     WEB_LDR: csvUrl("454262652"),
     WEB_GOV: csvUrl("1471855876"),
@@ -41,7 +50,6 @@
     CALC_RULES: csvUrl("1782585164"),
 
     /* New economy model sheets */
-    MONTHLY_ENGINE: csvUrl("1827825411"),
     CONTROL_CONFIG: csvUrl("1448726664"),
     YEARLY_FISCAL_OUTPUT: csvUrl("845310261"),
     YEARLY_MANDATORY_ENGINE: csvUrl("30195170"),
