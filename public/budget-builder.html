@@ -1,1 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <title>Budget Builder | APRP Federal Archives</title>
+
+  <link rel="stylesheet" href="./assets/css/app.css" />
+
+  <style>
+    .budget-home-return {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: fit-content;
+      margin-bottom: 14px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 950;
+      backdrop-filter: blur(10px);
+    }
+
+    .budget-home-return:hover,
+    .budget-home-return:focus {
+      background: rgba(255,255,255,.22);
+      outline: none;
+    }
+
+    .budget-page-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .budget-shell {
+      display: grid;
+      gap: 16px;
+    }
+
+    .budget-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(360px, .65fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .budget-panel {
+      border: 1px solid rgba(15,23,42,.14);
+      border-radius: 22px;
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 18px 45px rgba(15,23,42,.08);
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .budget-panel.dark {
+      color: #fff;
+      background: linear-gradient(180deg, #17253c, #07111f);
+      border-color: rgba(255,255,255,.12);
+    }
+
+    .budget-panel h2,
+    .budget-panel h3 {
+      margin: 4px 0 10px;
+      color: #07111f;
+      font-family: Georgia, serif;
+    }
+
+    .budget-panel.dark h2,
+    .budget-panel.dark h3 {
+      color: #fff;
+    }
+
+    .budget-note {
+      color: #64748b;
+      font-size: .86rem;
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    .budget-panel.dark .budget-note {
+      color: #cbd5e1;
+    }
+
+    .budget-controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .budget-field {
+      display: grid;
+      gap: 5px;
+    }
+
+    .budget-field label {
+      color: #334155;
+      font-size: .66rem;
+      font-weight: 1000;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .budget-field select,
+    .budget-field input,
+    .budget-field textarea {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid rgba(15,23,42,.16);
+      border-radius: 12px;
+      background: rgba(248,250,252,.96);
+      color: #07111f;
+      padding: 8px 10px;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .budget-field textarea {
+      min-height: 90px;
+      resize: vertical;
+      line-height: 1.35;
+    }
+
+    .budget-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .budget-kpi {
+      border: 1px solid rgba(15,23,42,.10);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(241,245,249,.92));
+      padding: 10px;
+      min-height: 80px;
+    }
+
+    .budget-kpi strong {
+      display: block;
+      color: #1d4ed8;
+      font-size: .54rem;
+      font-weight: 1000;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .budget-kpi span {
+      display: block;
+      margin-top: 6px;
+      color: #07111f;
+      font-size: 1.05rem;
+      font-weight: 1000;
+      line-height: 1.05;
+    }
+
+    .budget-kpi small {
+      display: block;
+      margin-top: 5px;
+      color: #64748b;
+      font-size: .66rem;
+      font-weight: 850;
+    }
+
+    .budget-section-title {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .budget-section-title h3 {
+      margin: 0;
+    }
+
+    .budget-slider-list,
+    .budget-spending-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .budget-slider-row,
+    .budget-spending-row {
+      display: grid;
+      grid-template-columns: minmax(190px, .75fr) minmax(180px, 1fr) 86px;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid rgba(15,23,42,.10);
+      border-radius: 14px;
+      background: rgba(248,250,252,.92);
+      padding: 9px;
+    }
+
+    .budget-slider-row label,
+    .budget-spending-row label {
+      color: #07111f;
+      font-size: .78rem;
+      font-weight: 950;
+      line-height: 1.15;
+    }
+
+    .budget-slider-row input[type="range"] {
+      width: 100%;
+    }
+
+    .budget-slider-value {
+      color: #1d4ed8;
+      font-weight: 1000;
+      text-align: right;
+      font-size: .82rem;
+    }
+
+    .budget-spending-row input {
+      width: 100%;
+      border: 1px solid rgba(15,23,42,.14);
+      border-radius: 10px;
+      padding: 7px 8px;
+      font: inherit;
+      font-weight: 850;
+    }
+
+    .budget-export-box {
+      width: 100%;
+      min-height: 320px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      background: rgba(2,6,23,.45);
+      color: #e5e7eb;
+      padding: 12px;
+      font: 700 .8rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      resize: vertical;
+      white-space: pre-wrap;
+    }
+
+    .budget-action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .budget-action-row .btn {
+      cursor: pointer;
+    }
+
+    .budget-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .budget-tab {
+      border: 1px solid rgba(15,23,42,.14);
+      border-radius: 999px;
+      background: rgba(255,255,255,.88);
+      color: #07111f;
+      padding: 7px 11px;
+      font-size: .72rem;
+      font-weight: 1000;
+      cursor: pointer;
+    }
+
+    .budget-tab.is-active {
+      background: #07111f;
+      color: #fff;
+      border-color: #07111f;
+    }
+
+    .budget-tab-panel {
+      display: none;
+    }
+
+    .budget-tab-panel.is-active {
+      display: block;
+    }
+
+    .budget-status {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      background: rgba(37,99,235,.10);
+      color: #1d4ed8;
+      border: 1px solid rgba(37,99,235,.18);
+      padding: 5px 9px;
+      font-size: .68rem;
+      font-weight: 1000;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .budget-table-wrap {
+      overflow: auto;
+      border: 1px solid rgba(15,23,42,.10);
+      border-radius: 16px;
+      margin-top: 10px;
+    }
+
+    .budget-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    .budget-table th,
+    .budget-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(15,23,42,.08);
+      text-align: left;
+      font-size: .78rem;
+    }
+
+    .budget-table th {
+      color: #1d4ed8;
+      background: rgba(248,250,252,.96);
+      font-size: .58rem;
+      font-weight: 1000;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+    }
+
+    .budget-table td {
+      color: #07111f;
+      font-weight: 800;
+    }
+
+    @media (max-width: 1180px) {
+      .budget-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .budget-controls,
+      .budget-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .budget-home-return {
+        width: 100%;
+      }
+
+      .hero-actions .btn,
+      .budget-page-links .btn,
+      .budget-action-row .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .budget-controls,
+      .budget-kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .budget-slider-row,
+      .budget-spending-row {
+        grid-template-columns: 1fr;
+      }
+
+      .budget-slider-value {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="page-shell">
+    <header class="site-header" data-collapsing-header>
+      <div class="header-inner">
+        <a class="brand" href="./index.html" aria-label="APRP Federal Archives home">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">
+            <span class="brand-kicker">APRP Archives</span>
+            <span class="brand-title">Budget Builder</span>
+          </span>
+        </a>
+
+        <nav class="primary-nav" data-aprp-nav aria-label="Primary navigation"></nav>
+      </div>
+    </header>
+
+    <section class="archive-hero economy-hero">
+      <div class="hero-content">
+        <div>
+          <a class="budget-home-return" href="./index.html">← Archive Home</a>
+
+          <div class="hero-kicker">Federal Budget Simulator</div>
+          <h1 class="hero-title">Budget Builder</h1>
+          <p class="hero-subtitle">
+            Build a proposed fiscal budget from the public APRP economy model. Adjust tax rates,
+            department spending, and special law assumptions, then export a Discord-ready proposal.
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn btn-blue" href="#budget-builder-root">Open Builder</a>
+            <a class="btn btn-outline" href="./economy.html">Economy Archive</a>
+            <button class="btn btn-outline" type="button" data-budget-scroll-export>Export Proposal</button>
+          </div>
+
+          <div class="budget-page-links">
+            <a class="btn btn-small btn-outline" href="./economy.html">Economy</a>
+            <a class="btn btn-small btn-outline" href="./government.html">Government</a>
+            <a class="btn btn-small btn-outline" href="./timeline.html">Timeline</a>
+            <a class="btn btn-small btn-outline" href="./hall-of-presidents.html">Presidents</a>
+            <a class="btn btn-small btn-outline" href="./elections.html">Elections</a>
+            <a class="btn btn-small btn-red" href="./live-results.html">Live Results</a>
+          </div>
+        </div>
+
+        <aside class="hero-side-card" id="budget-hero-card">
+          <div class="eyebrow">Budget Model</div>
+          <h2>Loading builder...</h2>
+          <p>Reading tax, spending, revenue, and fiscal data from the public economy model.</p>
+        </aside>
+      </div>
+    </section>
+
+    <main id="main">
+      <section class="section section-tight">
+        <div class="container-wide budget-shell" id="budget-builder-root">
+          <div class="budget-panel">
+            <div class="budget-section-title">
+              <div>
+                <div class="eyebrow">Proposal Controls</div>
+                <h2>Build Budget Proposal</h2>
+                <p class="budget-note">
+                  This page does not edit the live Google Sheet. It reads the current model, calculates a local preview,
+                  and exports copy-paste text for review.
+                </p>
+              </div>
+              <span class="budget-status" id="budget-load-status">Loading</span>
+            </div>
+
+            <div class="budget-controls">
+              <div class="budget-field">
+                <label for="budget-year">Fiscal Year</label>
+                <select id="budget-year"></select>
+              </div>
+
+              <div class="budget-field">
+                <label for="budget-title">Budget Title</label>
+                <input id="budget-title" type="text" value="Federal Budget Proposal" />
+              </div>
+
+              <div class="budget-field">
+                <label for="budget-sponsor">Sponsor</label>
+                <input id="budget-sponsor" type="text" placeholder="@player / party / office" />
+              </div>
+
+              <div class="budget-field">
+                <label for="budget-party">Party / Caucus</label>
+                <input id="budget-party" type="text" placeholder="DNC / GOP / IND" />
+              </div>
+            </div>
+
+            <div class="budget-kpi-grid" id="budget-kpis">
+              <div class="budget-kpi"><strong>Revenue</strong><span>—</span><small>Projected</small></div>
+              <div class="budget-kpi"><strong>Spending</strong><span>—</span><small>Projected</small></div>
+              <div class="budget-kpi"><strong>Deficit</strong><span>—</span><small>Projected</small></div>
+              <div class="budget-kpi"><strong>Debt-to-GDP</strong><span>—</span><small>Projected</small></div>
+            </div>
+          </div>
+
+          <div class="budget-grid">
+            <section class="budget-panel">
+              <div class="budget-tabs" role="tablist" aria-label="Budget builder sections">
+                <button class="budget-tab is-active" type="button" data-budget-tab="taxes">Tax Rates</button>
+                <button class="budget-tab" type="button" data-budget-tab="spending">Spending</button>
+                <button class="budget-tab" type="button" data-budget-tab="laws">Special Laws</button>
+                <button class="budget-tab" type="button" data-budget-tab="preview">Preview Table</button>
+              </div>
+
+              <div class="budget-tab-panel is-active" data-budget-panel="taxes">
+                <div class="budget-section-title">
+                  <div>
+                    <div class="eyebrow">Revenue Policy</div>
+                    <h3>Tax Rate Sliders</h3>
+                    <p class="budget-note">Rates are loaded from TAX_RATES_BY_YEAR for the selected fiscal year.</p>
+                  </div>
+                </div>
+
+                <div class="budget-slider-list" id="budget-tax-sliders">
+                  <p class="budget-note">Loading tax rates...</p>
+                </div>
+              </div>
+
+              <div class="budget-tab-panel" data-budget-panel="spending">
+                <div class="budget-section-title">
+                  <div>
+                    <div class="eyebrow">Discretionary Budget</div>
+                    <h3>Department Spending</h3>
+                    <p class="budget-note">Spending values are in billions of dollars.</p>
+                  </div>
+                </div>
+
+                <div class="budget-spending-list" id="budget-spending-inputs">
+                  <p class="budget-note">Loading spending data...</p>
+                </div>
+              </div>
+
+              <div class="budget-tab-panel" data-budget-panel="laws">
+                <div class="budget-section-title">
+                  <div>
+                    <div class="eyebrow">Special Items</div>
+                    <h3>Law / Event Assumptions</h3>
+                    <p class="budget-note">
+                      Add temporary spending, tariffs, crisis responses, or special appropriations here for the export.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="budget-controls">
+                  <div class="budget-field">
+                    <label for="law-name">Item Name</label>
+                    <input id="law-name" type="text" placeholder="National Infrastructure Fund" />
+                  </div>
+
+                  <div class="budget-field">
+                    <label for="law-type">Type</label>
+                    <select id="law-type">
+                      <option value="BILL">BILL</option>
+                      <option value="EXECUTIVE_ORDER">EXECUTIVE_ORDER</option>
+                      <option value="EVENT">EVENT</option>
+                      <option value="CRISIS">CRISIS</option>
+                    </select>
+                  </div>
+
+                  <div class="budget-field">
+                    <label for="law-direct-cost">Direct Cost</label>
+                    <input id="law-direct-cost" type="number" value="0" step="1000000000" />
+                  </div>
+
+                  <div class="budget-field">
+                    <label for="law-direct-revenue">Direct Revenue</label>
+                    <input id="law-direct-revenue" type="number" value="0" step="1000000000" />
+                  </div>
+                </div>
+
+                <div class="budget-controls">
+                  <div class="budget-field">
+                    <label for="law-gdp-effect">GDP Effect</label>
+                    <input id="law-gdp-effect" type="text" value="0.00%" />
+                  </div>
+
+                  <div class="budget-field">
+                    <label for="law-inflation-effect">Inflation Effect</label>
+                    <input id="law-inflation-effect" type="text" value="0.00%" />
+                  </div>
+
+                  <div class="budget-field">
+                    <label for="law-approval-impact">Approval Impact</label>
+                    <input id="law-approval-impact" type="number" value="0" step="0.05" />
+                  </div>
+
+                  <div class="budget-field">
+                    <label for="law-stock-impact">Stock Impact</label>
+                    <input id="law-stock-impact" type="number" value="0" step="1" />
+                  </div>
+                </div>
+
+                <div class="budget-action-row">
+                  <button class="btn btn-blue" type="button" id="add-law-item">Add Special Item</button>
+                  <button class="btn btn-outline" type="button" id="clear-law-items">Clear Items</button>
+                </div>
+
+                <div class="budget-table-wrap">
+                  <table class="budget-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Cost</th>
+                        <th>Revenue</th>
+                        <th>GDP</th>
+                        <th>Approval</th>
+                        <th>Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody id="budget-law-table">
+                      <tr><td colspan="7">No special items added.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="budget-tab-panel" data-budget-panel="preview">
+                <div class="budget-section-title">
+                  <div>
+                    <div class="eyebrow">Projection Detail</div>
+                    <h3>Budget Preview</h3>
+                    <p class="budget-note">Shows baseline vs. proposed changes from the local builder.</p>
+                  </div>
+                </div>
+
+                <div class="budget-table-wrap">
+                  <table class="budget-table">
+                    <thead>
+                      <tr>
+                        <th>Category</th>
+                        <th>Baseline</th>
+                        <th>Proposed</th>
+                        <th>Change</th>
+                      </tr>
+                    </thead>
+                    <tbody id="budget-preview-table">
+                      <tr><td colspan="4">Loading preview...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <aside class="budget-panel dark" id="budget-export-panel">
+              <div class="eyebrow">Export</div>
+              <h2>Budget Proposal Output</h2>
+              <p class="budget-note">
+                Copy this into Discord, a bill submission, or a staff review thread. It is generated locally from the sliders.
+              </p>
+
+              <div class="budget-action-row">
+                <button class="btn btn-blue" type="button" id="copy-budget-markdown">Copy Markdown</button>
+                <button class="btn btn-outline" type="button" id="copy-budget-tax-row">Copy Tax Row</button>
+                <button class="btn btn-outline" type="button" id="reset-budget-builder">Reset</button>
+              </div>
+
+              <textarea class="budget-export-box" id="budget-export-text" readonly>Loading export...</textarea>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>APRP Federal Archives</strong>
+          <div class="text-small">Public archive for fiscal, economic, and political indicators.</div>
+        </div>
+        <div class="text-small">Budget Builder</div>
+      </div>
+    </footer>
+
+    <nav class="mobile-bottom-nav" data-mobile-nav aria-label="Mobile navigation"></nav>
+  </div>
+
+  <script src="./assets/js/sheets.js"></script>
+  <script src="./assets/js/shared.js"></script>
+  <script src="./assets/js/budget-builder.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const btn = document.querySelector("[data-budget-scroll-export]");
+      const panel = document.querySelector("#budget-export-panel");
+
+      if (btn && panel) {
+        btn.addEventListener("click", function () {
+          panel.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    });
+  </script>
+</body>
+</html>
