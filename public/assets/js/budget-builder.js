@@ -1,7 +1,9 @@
 /* APRP Federal Archive — Budget Builder
-   Reads public Google Sheet CSV data.
-   Shows every tax and every spending field.
-   No special laws tab.
+   Four markdown budget export:
+   1. Tax Rates / Revenue Budget
+   2. Mandatory Rules and Laws
+   3. Defense, Homeland, Justice, State, and Agency Appropriations
+   4. Health, Education, Energy, Infrastructure, Agriculture, Interior, EPA, HUD Appropriations
 */
 
 (function () {
@@ -57,27 +59,62 @@
     "source"
   ]);
 
-  const SPENDING_FIELDS = [
-    ["defense_spending", "Defense"],
-    ["education_spending", "Education"],
-    ["health_social_admin_spending", "Health & Social Admin"],
-    ["transportation_spending", "Transportation"],
-    ["treasury_spending", "Treasury"],
-    ["veterans_affairs_spending", "Veterans Affairs"],
-    ["homeland_security_spending", "Homeland Security"],
-    ["justice_spending", "Justice"],
-    ["state_foreign_affairs_spending", "State / Foreign Affairs"],
-    ["interior_natural_resources_spending", "Interior / Natural Resources"],
-    ["agriculture_spending", "Agriculture"],
-    ["energy_spending", "Energy"],
-    ["commerce_spending", "Commerce"],
-    ["labor_spending", "Labor"],
-    ["housing_urban_development_spending", "Housing & Urban Development"],
-    ["environmental_protection_spending", "Environmental Protection"],
+  const DEFENSE_AGENCY_FIELDS = [
+    ["defense_spending", "Department of Defense"],
+    ["treasury_spending", "Department of Treasury"],
+    ["veterans_affairs_spending", "Department of Veterans Affairs"],
+    ["homeland_security_spending", "Department of Homeland Security"],
+    ["justice_spending", "Department of Justice"],
+    ["state_foreign_affairs_spending", "Department of State and Foreign Affairs"],
+    ["commerce_spending", "Department of Commerce"],
+    ["labor_spending", "Department of Labor"],
     ["nasa_spending", "NASA"],
-    ["sba_spending", "SBA"],
+    ["sba_spending", "Small Business Administration"],
     ["other_agencies_spending", "Other Agencies"],
     ["general_government_spending", "General Government"]
+  ];
+
+  const DOMESTIC_FIELDS = [
+    ["education_spending", "Department of Education"],
+    ["health_social_admin_spending", "Health and Social Administration"],
+    ["transportation_spending", "Department of Transportation"],
+    ["interior_natural_resources_spending", "Department of the Interior and Natural Resources"],
+    ["agriculture_spending", "Department of Agriculture"],
+    ["energy_spending", "Department of Energy"],
+    ["housing_urban_development_spending", "Department of Housing and Urban Development"],
+    ["environmental_protection_spending", "Environmental Protection Agency"]
+  ];
+
+  const ALL_SPENDING_FIELDS = [...DEFENSE_AGENCY_FIELDS, ...DOMESTIC_FIELDS];
+
+  const REVENUE_FIELDS = [
+    ["income_0_10k_revenue", "Income $0–10k"],
+    ["income_10_30k_revenue", "Income $10k–30k"],
+    ["income_30_60k_revenue", "Income $30k–60k"],
+    ["income_60_100k_revenue", "Income $60k–100k"],
+    ["income_100_250k_revenue", "Income $100k–250k"],
+    ["income_250_500k_revenue", "Income $250k–500k"],
+    ["income_500_1000k_revenue", "Income $500k–1M"],
+    ["income_1000k_5m_revenue", "Income $1M–5M"],
+    ["income_5m_10m_revenue", "Income $5M–10M"],
+    ["income_10m_plus_revenue", "Income $10M+"],
+    ["corp_0_50k_revenue", "Corporate $0–50k"],
+    ["corp_50_500k_revenue", "Corporate $50k–500k"],
+    ["corp_500k_5m_revenue", "Corporate $500k–5M"],
+    ["corp_5m_10m_revenue", "Corporate $5M–10M"],
+    ["corp_10m_100m_revenue", "Corporate $10M–100M"],
+    ["corp_100m_1b_revenue", "Corporate $100M–1B"],
+    ["corp_1b_plus_revenue", "Corporate $1B+"],
+    ["payroll_medicare_revenue", "Medicare Payroll"],
+    ["payroll_social_security_revenue", "Social Security Payroll"],
+    ["payroll_worker_revenue", "Worker Payroll"],
+    ["sales_tax_revenue", "Sales Tax"],
+    ["cap_gains_short_term_revenue", "Short-Term Capital Gains"],
+    ["cap_gains_long_term_revenue", "Long-Term Capital Gains"],
+    ["excise_tax_revenue", "Excise Tax"],
+    ["ucare_revenue", "UCare Revenue"],
+    ["event_revenue_impact", "Event Revenue Impact"],
+    ["direct_revenue", "Direct Revenue"]
   ];
 
   let DATA = {};
@@ -118,6 +155,12 @@
     const n = Number(value);
     if (!Number.isFinite(n)) return "—";
     return `${n.toFixed(n % 1 === 0 ? 0 : 1)}%`;
+  }
+
+  function fmtPlain(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return cleanCell(value) || "—";
+    return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
   }
 
   function parseRate(value) {
@@ -182,7 +225,6 @@
     });
 
     const sorted = Array.from(years).sort((a, b) => a - b);
-
     if (sorted.length) return sorted;
 
     return Array.from({ length: 20 }, (_, index) => 2011 + index);
@@ -220,7 +262,7 @@
   function sumSpendingRow(row) {
     if (!row) return 0;
 
-    return SPENDING_FIELDS.reduce((sum, [key]) => {
+    return ALL_SPENDING_FIELDS.reduce((sum, [key]) => {
       return sum + toNumber(row[key], 0);
     }, 0);
   }
@@ -237,7 +279,8 @@
       toNumber(fiscal.gdp, NaN) ||
       toNumber(macro.real_gdp, NaN) ||
       toNumber(macro.gdp, NaN) ||
-      toNumber(revenue.real_gdp, 0);
+      toNumber(revenue.real_gdp, NaN) ||
+      toNumber(disc.real_gdp, 0);
 
     const totalRevenue =
       toNumber(fiscal.total_revenue, NaN) ||
@@ -253,6 +296,7 @@
     const discretionarySpending =
       toNumber(fiscal.discretionary_spending, NaN) ||
       toNumber(fiscal.discretionary_sper, NaN) ||
+      toNumber(disc.total_discretionary_spending, NaN) ||
       sumSpendingRow(disc);
 
     const interestCost = toNumber(fiscal.interest_cost, 0);
@@ -299,7 +343,6 @@
     const rows = DATA.TAX_RATES_BY_YEAR || [];
     const target = Number(year);
     const exactRows = rows.filter((row) => toNumber(row.year, NaN) === target);
-
     const sourceRows = exactRows.length ? exactRows : rows;
 
     const longRows = sourceRows.filter((row) => {
@@ -334,14 +377,23 @@
       rows[0] ||
       {};
 
-    const wideItems = Object.keys(wideRow)
+    return Object.keys(wideRow)
       .filter((key) => {
         if (METADATA_KEYS.has(key)) return false;
         const value = cleanCell(wideRow[key]);
         if (value === "") return false;
         const n = toNumber(value, NaN);
         if (!Number.isFinite(n)) return false;
-        return key.includes("rate") || key.includes("tax") || key.includes("fica") || key.includes("medicare") || key.includes("social_security") || key.includes("capital") || key.includes("excise") || key.includes("income") || key.includes("corp");
+        return key.includes("rate") ||
+          key.includes("tax") ||
+          key.includes("fica") ||
+          key.includes("medicare") ||
+          key.includes("social_security") ||
+          key.includes("capital") ||
+          key.includes("excise") ||
+          key.includes("income") ||
+          key.includes("corp") ||
+          key.includes("ucare");
       })
       .map((key) => {
         const cleanKey = key
@@ -361,15 +413,13 @@
           source: wideRow
         };
       });
-
-    return wideItems;
   }
 
   function copyBaselineIntoState() {
     state.taxRows = getTaxRowsForYear(selectedYear);
 
     state.spending = {};
-    SPENDING_FIELDS.forEach(([key]) => {
+    ALL_SPENDING_FIELDS.forEach(([key]) => {
       state.spending[key] = toNumber(baseline.disc?.[key], 0);
     });
   }
@@ -419,7 +469,7 @@
     const container = $("#budget-spending-inputs");
     if (!container) return;
 
-    container.innerHTML = SPENDING_FIELDS.map(([key, label]) => {
+    container.innerHTML = ALL_SPENDING_FIELDS.map(([key, label]) => {
       const value = toNumber(state.spending[key], 0);
 
       return `
@@ -578,59 +628,376 @@
     }).join("");
   }
 
-  function allTaxLines() {
-    if (!state.taxRows.length) return "- No tax rates found.";
+  function tableRows(fields, row, formatter = fmtMoneyB) {
+    return fields.map(([key, label]) => {
+      return `| ${label} | ${formatter(toNumber(row?.[key], 0))} |`;
+    }).join("\n");
+  }
+
+  function revenueTableRows() {
+    const revenue = baseline.revenue || {};
+    return REVENUE_FIELDS.map(([key, label]) => {
+      return `| ${label} | ${fmtMoneyB(toNumber(revenue[key], 0))} |`;
+    }).join("\n");
+  }
+
+  function taxRateRows() {
+    if (!state.taxRows.length) return "| No tax rates found | — | — | — |";
 
     return state.taxRows.map((item) => {
       const change = item.proposedRate - item.baseRate;
       const sign = change >= 0 ? "+" : "";
-      return `- ${item.label}: ${fmtPercent(item.baseRate)} → ${fmtPercent(item.proposedRate)} (${sign}${change.toFixed(1)} pp)`;
+      return `| ${item.label} | ${fmtPercent(item.baseRate)} | ${fmtPercent(item.proposedRate)} | ${sign}${change.toFixed(1)} pp |`;
     }).join("\n");
   }
 
-  function allSpendingLines() {
-    return SPENDING_FIELDS.map(([key, label]) => {
+  function spendingRows(fields) {
+    return fields.map(([key, label]) => {
       const base = toNumber(baseline.disc?.[key], 0);
       const proposed = toNumber(state.spending[key], 0);
       const change = proposed - base;
       const sign = change >= 0 ? "+" : "";
-      return `- ${label}: ${fmtMoneyB(base)} → ${fmtMoneyB(proposed)} (${sign}${fmtMoneyB(change)})`;
+      return `| ${label} | ${fmtMoneyB(base)} | ${fmtMoneyB(proposed)} | ${sign}${fmtMoneyB(change)} |`;
     }).join("\n");
+  }
+
+  function mandatoryValue(key, fallback = 0) {
+    return baseline.mandatory?.[key] ?? fallback;
+  }
+
+  function buildTaxBudgetMarkdown() {
+    const p = calculateProjection();
+    const title = cleanCell($("#budget-title")?.value) || "Federal Budget Package";
+    const sponsor = cleanCell($("#budget-sponsor")?.value) || "Unspecified";
+    const party = cleanCell($("#budget-party")?.value) || "Unspecified";
+
+    return `TAX RATES AND REVENUE BUDGET ACT
+
+
+IN THE UNITED STATES CONGRESS
+IN THE YEAR ${selectedYear}
+
+
+Author: ${sponsor}
+Sponsor(s): ${party}
+Co-Sponsors:
+
+
+Be it enacted by the Senate and House of Representatives of the United States of America in Congress assembled,
+
+
+Title I - General Information
+
+
+SECTION 101. SHORT TITLE.
+This Act may be cited as the "FY${selectedYear} Tax Rates and Revenue Budget."
+
+
+SECTION 102. PURPOSE.
+The purpose of this Act is to establish the federal tax rate schedule, revenue assumptions, and projected receipts for Fiscal Year ${selectedYear}, including individual income taxes, corporate taxes, payroll taxes, capital gains taxes, excise taxes, UCare revenue, direct revenue, and event revenue impacts.
+
+
+SECTION 103. FINDINGS.
+Congress finds that:
+(a) Federal tax policy must be clearly recorded each fiscal year to support accurate budget projections.
+(b) Individual, corporate, payroll, capital gains, excise, and other revenues directly affect the federal deficit and debt outlook.
+(c) Congress has a responsibility to certify the revenue basis used by the Office of Budget Management.
+(d) Transparent revenue schedules improve accountability for taxpayers, agencies, and Congress.
+
+
+SECTION 104. DEFINITIONS.
+For the purposes of this Act:
+"Revenue category" means any tax, duty, payroll contribution, special charge, or direct revenue source recorded in the federal revenue engine.
+"Fiscal year" means Fiscal Year ${selectedYear}.
+"Office of Budget Management" means the fiscal authority responsible for recording APRP budget outputs.
+
+
+Title II - Bill Content
+
+
+SECTION 201. TAX RATE SCHEDULE.
+The following tax rates are authorized for Fiscal Year ${selectedYear}:
+
+| Tax Category | Baseline Rate | Proposed Rate | Change |
+|---|---:|---:|---:|
+${taxRateRows()}
+
+
+SECTION 202. PROJECTED REVENUE BY CATEGORY.
+The following revenue projections are certified for Fiscal Year ${selectedYear}:
+
+| Revenue Category | Projected Revenue |
+|---|---:|
+${revenueTableRows()}
+
+
+SECTION 203. TOTAL REVENUE CERTIFICATION.
+The Office of Budget Management shall record the following revenue totals:
+
+| Revenue Measure | Amount |
+|---|---:|
+| Baseline Total Revenue | ${fmtMoneyB(baseline.totalRevenue)} |
+| Proposed Total Revenue | ${fmtMoneyB(p.proposedRevenue)} |
+| Revenue Change | ${fmtMoneyB(p.proposedRevenue - baseline.totalRevenue)} |
+| Revenue as % of GDP | ${fmtPercent(toNumber(baseline.revenue?.revenue_pct_gdp, baseline.gdp ? (p.proposedRevenue / baseline.gdp) * 100 : 0))} |
+
+
+SECTION 204. EFFECTIVE DATE.
+This Act shall take effect upon enactment and shall apply to Fiscal Year ${selectedYear}.`;
+  }
+
+  function buildMandatoryMarkdown() {
+    return `MANDATORY PROGRAMS AND FEDERAL OBLIGATIONS ACT
+
+
+IN THE UNITED STATES CONGRESS
+IN THE YEAR ${selectedYear}
+
+
+Author: ${cleanCell($("#budget-sponsor")?.value) || "Unspecified"}
+Sponsor(s): ${cleanCell($("#budget-party")?.value) || "Unspecified"}
+Co-Sponsors:
+
+
+Be it enacted by the Senate and House of Representatives of the United States of America in Congress assembled,
+
+
+Title I - General Information
+
+
+SECTION 101. SHORT TITLE.
+This Act may be cited as the "FY${selectedYear} Mandatory Programs and Federal Obligations Act."
+
+
+SECTION 102. PURPOSE.
+The purpose of this Act is to certify mandatory spending rules, demographic assumptions, eligibility formulas, benefit formulas, and entitlement obligations for Fiscal Year ${selectedYear}.
+
+
+SECTION 103. FINDINGS.
+Congress finds that:
+(a) Mandatory programs are continuing legal obligations and must be recorded separately from discretionary appropriations.
+(b) Social Security, Medicare, Medicaid, SNAP, child health, FCWA, retirement, SSI, and related obligations must be calculated under clear rules.
+(c) Demographic assumptions such as population, over-65 population, under-18 population, and median wage affect mandatory spending projections.
+(d) Congress must record both formula rules and final costs for federal obligations.
+
+
+SECTION 104. DEFINITIONS.
+For the purposes of this Act:
+"Mandatory spending" means spending required by eligibility rules, benefit formulas, automatic obligations, or existing law.
+"Eligibility percentage" means the share of a population group eligible for a mandatory program.
+"Benefit formula" means the wage, population, poverty, age, or usage-based rule used to estimate cost.
+"Fiscal year" means Fiscal Year ${selectedYear}.
+
+
+Title II - Bill Content
+
+
+SECTION 201. DEMOGRAPHIC AND WAGE ASSUMPTIONS.
+
+| Assumption | Value |
+|---|---:|
+| Population | ${fmtPlain(mandatoryValue("population"))} |
+| Over-65 Population | ${fmtPlain(mandatoryValue("over65_population"))} |
+| Under-18 Population | ${fmtPlain(mandatoryValue("under18_population"))} |
+| Final Median Wage | ${fmtMoneyB(toNumber(mandatoryValue("final_median_wage"), 0) / 1000000000)} |
+
+
+SECTION 202. SOCIAL SECURITY, MEDICARE, AND MEDICAID.
+
+| Program / Rule | Value |
+|---|---:|
+| Social Security Eligibility % Over 65 | ${fmtPercent(toNumber(mandatoryValue("ss_eligibility_pct_over65"), 0))} |
+| Social Security Base Cost % Median Wage | ${fmtPercent(toNumber(mandatoryValue("ss_base_cost_pct_median_wage"), 0))} |
+| Social Security Cost | ${fmtMoneyB(toNumber(mandatoryValue("social_security_cost"), 0))} |
+| Medicare Eligibility % Over 65 | ${fmtPercent(toNumber(mandatoryValue("medicare_eligibility_pct_over65"), 0))} |
+| Medicare Base Cost % Median Wage | ${fmtPercent(toNumber(mandatoryValue("medicare_base_cost_pct_median_wage"), 0))} |
+| Health Cost Growth Extra | ${fmtPercent(toNumber(mandatoryValue("health_cost_growth_extra"), 0))} |
+| Medicare Cost | ${fmtMoneyB(toNumber(mandatoryValue("medicare_cost"), 0))} |
+| Medicaid Eligibility % Population | ${fmtPercent(toNumber(mandatoryValue("medicaid_eligibility_pct_population"), 0))} |
+| Medicaid Base Cost % Median Wage | ${fmtPercent(toNumber(mandatoryValue("medicaid_base_cost_pct_median_wage"), 0))} |
+| Medicaid Cost | ${fmtMoneyB(toNumber(mandatoryValue("medicaid_cost"), 0))} |
+
+
+SECTION 203. SNAP, CHILD HEALTH, FCWA, RETIREMENT, AND SSI.
+
+| Program / Rule | Value |
+|---|---:|
+| SNAP Eligibility % Population | ${fmtPercent(toNumber(mandatoryValue("snap_eligibility_pct_population"), 0))} |
+| SNAP Base Cost % Median Wage | ${fmtPercent(toNumber(mandatoryValue("snap_base_cost_pct_median_wage"), 0))} |
+| SNAP Cost | ${fmtMoneyB(toNumber(mandatoryValue("snap_cost"), 0))} |
+| Child Health Eligibility % Uninsured Under 18 | ${fmtPercent(toNumber(mandatoryValue("child_health_eligibility_pct_uninsured_under18"), 0))} |
+| Child Health Poverty Multiplier | ${fmtPlain(mandatoryValue("child_health_poverty_multiplier"))} |
+| Child Health Base Cost % Median Wage | ${fmtPercent(toNumber(mandatoryValue("child_health_base_cost_pct_median_wage"), 0))} |
+| Child Health Cost | ${fmtMoneyB(toNumber(mandatoryValue("child_health_cost"), 0))} |
+| FCWA Eligible % Labor Force | ${fmtPercent(toNumber(mandatoryValue("fcwa_eligible_pct_labor_force"), 0))} |
+| FCWA Wage Reimbursement Rate | ${fmtPercent(toNumber(mandatoryValue("fcwa_wage_reimbursement_rate"), 0))} |
+| FCWA Parental Leave Weeks | ${fmtPlain(mandatoryValue("fcwa_parental_leave_weeks"))} |
+| FCWA Paid Vacation Days | ${fmtPlain(mandatoryValue("fcwa_paid_vacation_days"))} |
+| FCWA Usage Rate | ${fmtPercent(toNumber(mandatoryValue("fcwa_usage_rate"), 0))} |
+| FCWA Cost | ${fmtMoneyB(toNumber(mandatoryValue("fcwa_cost"), 0))} |
+| Federal Civilian Retirement Cost | ${fmtMoneyB(toNumber(mandatoryValue("fed_civilian_retirement_cost"), 0))} |
+| Federal Military Retirement Cost | ${fmtMoneyB(toNumber(mandatoryValue("fed_military_retirement_cost"), 0))} |
+| SSI Final Eligibility % Population | ${fmtPercent(toNumber(mandatoryValue("ssi_final_eligibility_pct_population"), 0))} |
+| SSI Cost | ${fmtMoneyB(toNumber(mandatoryValue("ssi_cost"), 0))} |
+
+
+SECTION 204. TOTAL MANDATORY CERTIFICATION.
+
+| Measure | Value |
+|---|---:|
+| Mandatory Event Cost % GDP | ${fmtPercent(toNumber(mandatoryValue("mandatory_event_cost_pct_gdp"), 0))} |
+| Mandatory Direct Cost | ${fmtMoneyB(toNumber(mandatoryValue("mandatory_direct_cost"), 0))} |
+| Total Mandatory Spending | ${fmtMoneyB(toNumber(mandatoryValue("total_mandatory_spending", baseline.mandatorySpending), 0))} |
+| Mandatory Spending % GDP | ${fmtPercent(toNumber(mandatoryValue("mandatory_spending_pct_gdp"), baseline.gdp ? (baseline.mandatorySpending / baseline.gdp) * 100 : 0))} |
+
+
+SECTION 205. EFFECTIVE DATE.
+This Act shall take effect upon enactment and shall apply to Fiscal Year ${selectedYear}.`;
+  }
+
+  function buildDefenseAgencyMarkdown() {
+    return `DEFENSE, HOMELAND, JUSTICE, STATE, AND AGENCY APPROPRIATIONS ACT
+
+
+IN THE UNITED STATES CONGRESS
+IN THE YEAR ${selectedYear}
+
+
+Author: ${cleanCell($("#budget-sponsor")?.value) || "Unspecified"}
+Sponsor(s): ${cleanCell($("#budget-party")?.value) || "Unspecified"}
+Co-Sponsors:
+
+
+Be it enacted by the Senate and House of Representatives of the United States of America in Congress assembled,
+
+
+Title I - General Information
+
+
+SECTION 101. SHORT TITLE.
+This Act may be cited as the "FY${selectedYear} Defense, Homeland, Justice, State, and Agency Appropriations Act."
+
+
+SECTION 102. PURPOSE.
+The purpose of this Act is to provide department-specific discretionary appropriations for defense, treasury, veterans affairs, homeland security, justice, state and foreign affairs, commerce, labor, NASA, SBA, other agencies, and general government for Fiscal Year ${selectedYear}.
+
+
+SECTION 103. FINDINGS.
+Congress finds that:
+(a) National defense, homeland security, justice, foreign affairs, and federal administration require clear annual appropriations.
+(b) Department-specific appropriations improve accountability and prevent vague or untracked spending.
+(c) Congress must record each department under the exact fiscal category used by the budget sheet.
+(d) Transfers between departments should be limited unless authorized by law.
+
+
+SECTION 104. DEFINITIONS.
+For the purposes of this Act:
+"Department-specific appropriation" means funding assigned to a named department or agency category in the discretionary spending engine.
+"Fiscal year" means Fiscal Year ${selectedYear}.
+
+
+Title II - Bill Content
+
+
+SECTION 201. DEPARTMENT-SPECIFIC APPROPRIATIONS.
+The following appropriations are authorized for Fiscal Year ${selectedYear}:
+
+| Department / Agency | Baseline | Proposed | Change |
+|---|---:|---:|---:|
+${spendingRows(DEFENSE_AGENCY_FIELDS)}
+
+
+SECTION 202. OVERSIGHT.
+Each department funded under this Act shall administer funds only for authorized federal purposes. Transfers between departments shall require congressional notice unless emergency authority is expressly granted.
+
+
+SECTION 203. EFFECTIVE DATE.
+This Act shall take effect upon enactment and shall apply to Fiscal Year ${selectedYear}.`;
+  }
+
+  function buildDomesticMarkdown() {
+    return `HEALTH, EDUCATION, ENERGY, INFRASTRUCTURE, AGRICULTURE, INTERIOR, EPA, AND HUD APPROPRIATIONS ACT
+
+
+IN THE UNITED STATES CONGRESS
+IN THE YEAR ${selectedYear}
+
+
+Author: ${cleanCell($("#budget-sponsor")?.value) || "Unspecified"}
+Sponsor(s): ${cleanCell($("#budget-party")?.value) || "Unspecified"}
+Co-Sponsors:
+
+
+Be it enacted by the Senate and House of Representatives of the United States of America in Congress assembled,
+
+
+Title I - General Information
+
+
+SECTION 101. SHORT TITLE.
+This Act may be cited as the "FY${selectedYear} Domestic Investment and Public Services Appropriations Act."
+
+
+SECTION 102. PURPOSE.
+The purpose of this Act is to provide department-specific discretionary appropriations for education, health and social administration, transportation, interior and natural resources, agriculture, energy, housing and urban development, and environmental protection for Fiscal Year ${selectedYear}.
+
+
+SECTION 103. FINDINGS.
+Congress finds that:
+(a) Domestic department funding must be listed by exact department and agency category.
+(b) Education, health, transportation, agriculture, energy, interior, housing, and environmental protection directly affect public welfare and economic stability.
+(c) Congress must record domestic appropriations transparently for budget, deficit, and debt projections.
+(d) Department funding shall be administered only for its authorized public purpose.
+
+
+SECTION 104. DEFINITIONS.
+For the purposes of this Act:
+"Domestic investment" means department-specific discretionary funding for public welfare, infrastructure, education, health, natural resources, energy, agriculture, housing, and environmental protection.
+"Fiscal year" means Fiscal Year ${selectedYear}.
+
+
+Title II - Bill Content
+
+
+SECTION 201. DEPARTMENT-SPECIFIC APPROPRIATIONS.
+The following appropriations are authorized for Fiscal Year ${selectedYear}:
+
+| Department / Agency | Baseline | Proposed | Change |
+|---|---:|---:|---:|
+${spendingRows(DOMESTIC_FIELDS)}
+
+
+SECTION 202. DISCRETIONARY TOTALS.
+The Office of Budget Management shall record the following discretionary totals:
+
+| Measure | Value |
+|---|---:|
+| Event Direct Cost | ${fmtMoneyB(toNumber(baseline.disc?.event_direct_cost, 0))} |
+| Event Cost From % GDP | ${fmtMoneyB(toNumber(baseline.disc?.event_cost_from_pct_gdp, 0))} |
+| Total Discretionary Spending | ${fmtMoneyB(calculateProjection().proposedDiscretionary)} |
+| Discretionary Spending % GDP | ${fmtPercent(baseline.gdp ? (calculateProjection().proposedDiscretionary / baseline.gdp) * 100 : 0)} |
+
+
+SECTION 203. OVERSIGHT.
+Each department funded under this Act shall administer funds only for authorized domestic purposes. Domestic investment funds shall be reported by department, program area, and projected fiscal impact.
+
+
+SECTION 204. EFFECTIVE DATE.
+This Act shall take effect upon enactment and shall apply to Fiscal Year ${selectedYear}.`;
   }
 
   function buildMarkdownExport() {
     if (!baseline) return "Budget Builder still loading...";
 
-    const p = calculateProjection();
-
-    const title = cleanCell($("#budget-title")?.value) || "Federal Budget Proposal";
-    const sponsor = cleanCell($("#budget-sponsor")?.value) || "Unspecified";
-    const party = cleanCell($("#budget-party")?.value) || "Unspecified";
-
-    return `## FY${selectedYear} FEDERAL BUDGET PROPOSAL
-
-**Title:** ${title}
-**Sponsor:** ${sponsor}
-**Party/Caucus:** ${party}
-**Status:** Draft / Pending Review
-
-### Fiscal Summary
-- Revenue: ${fmtMoneyB(p.proposedRevenue)} / Baseline ${fmtMoneyB(baseline.totalRevenue)}
-- Spending: ${fmtMoneyB(p.proposedSpending)} / Baseline ${fmtMoneyB(baseline.totalSpending)}
-- Deficit/Surplus: ${fmtMoneyB(p.proposedDeficit)} / Baseline ${fmtMoneyB(baseline.deficit)}
-- Debt-to-GDP: ${fmtPercent(p.proposedDebtToGdp)} / Baseline ${fmtPercent(baseline.debtToGdp)}
-- Discretionary Spending: ${fmtMoneyB(p.proposedDiscretionary)}
-- Mandatory Spending: ${fmtMoneyB(baseline.mandatorySpending)}
-- Interest Cost: ${fmtMoneyB(baseline.interestCost)}
-
-### Full Tax Rate Schedule
-${allTaxLines()}
-
-### Full Discretionary Spending Schedule
-${allSpendingLines()}
-
-### Model Note
-Generated locally by APRP Budget Builder. Final adoption requires manual admin review and official sheet entry.`;
+    return [
+      buildTaxBudgetMarkdown(),
+      "\n\n---\n\n",
+      buildMandatoryMarkdown(),
+      "\n\n---\n\n",
+      buildDefenseAgencyMarkdown(),
+      "\n\n---\n\n",
+      buildDomesticMarkdown()
+    ].join("");
   }
 
   function buildTaxRowExport() {
@@ -664,7 +1031,7 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
     card.innerHTML = `
       <div class="eyebrow">FY${safeHTML(selectedYear)} Budget Preview</div>
       <h2>${safeHTML(fmtMoneyB(p.proposedDeficit))}</h2>
-      <p>Projected deficit/surplus after local tax and spending changes.</p>
+      <p>Projected deficit/surplus after local tax and department funding changes.</p>
     `;
   }
 
@@ -714,7 +1081,7 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
       const btn = $("#copy-budget-markdown");
       if (btn) {
         btn.textContent = "Copied!";
-        setTimeout(() => (btn.textContent = "Copy Markdown"), 1200);
+        setTimeout(() => (btn.textContent = "Copy All Markdown"), 1200);
       }
     });
 
@@ -724,7 +1091,7 @@ Generated locally by APRP Budget Builder. Final adoption requires manual admin r
       const btn = $("#copy-budget-tax-row");
       if (btn) {
         btn.textContent = "Copied!";
-        setTimeout(() => (btn.textContent = "Copy Tax Row"), 1200);
+        setTimeout(() => (btn.textContent = "Copy Tax Rows"), 1200);
       }
     });
 
