@@ -26,11 +26,7 @@
     WEB_EVENTS: csvUrl("529032081"),
     WEB_ECON: csvUrl("141774572"),
 
-    /*
-      IMPORTANT:
-      WEB_MONTHLY now points to MONTHLY_ENGINE.
-      This keeps old pages working while new economy.js reads MONTHLY_ENGINE directly.
-    */
+    /* WEB_MONTHLY now mirrors MONTHLY_ENGINE */
     WEB_MONTHLY: csvUrl("1827825411"),
     MONTHLY_ENGINE: csvUrl("1827825411"),
 
@@ -49,7 +45,7 @@
     CALC_EXPERIANCE: csvUrl("1581446706"),
     CALC_RULES: csvUrl("1782585164"),
 
-    /* New economy model sheets */
+    /* Economy model sheets */
     CONTROL_CONFIG: csvUrl("1448726664"),
     YEARLY_FISCAL_OUTPUT: csvUrl("845310261"),
     YEARLY_MANDATORY_ENGINE: csvUrl("30195170"),
@@ -199,8 +195,25 @@
     return Object.fromEntries(entries);
   }
 
+  async function loadSheetsSafe(sheetNames, options = {}) {
+    const result = {};
+
+    await Promise.all(
+      sheetNames.map(async (sheetName) => {
+        try {
+          result[sheetName] = await loadSheet(sheetName, options);
+        } catch (error) {
+          console.warn(`APRP sheet failed to load: ${sheetName}`, error);
+          result[sheetName] = [];
+        }
+      })
+    );
+
+    return result;
+  }
+
   async function loadEconomyModel(options = {}) {
-    return loadSheets(
+    return loadSheetsSafe(
       [
         "MONTHLY_ENGINE",
         "CONTROL_CONFIG",
@@ -458,9 +471,11 @@
     urls: SHEET_URLS,
     loadSheet,
     loadSheets,
+    loadSheetsSafe,
     loadEconomyModel,
     fetchSheet: loadSheet,
     fetchSheets: loadSheets,
+    fetchSheetsSafe: loadSheetsSafe,
     parseCSV,
     rowsToObjects
   };
@@ -468,8 +483,10 @@
   window.APRP = {
     fetchSheet: loadSheet,
     fetchSheets: loadSheets,
+    fetchSheetsSafe: loadSheetsSafe,
     loadSheet,
     loadSheets,
+    loadSheetsSafe,
     loadEconomyModel,
     parseCSV,
     rowsToObjects,
