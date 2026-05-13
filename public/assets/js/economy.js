@@ -2,11 +2,11 @@
    OMB-style compact dashboard.
 
    Updates:
-   - Monthly charts read MONTHLY_ENGINE, not old WEB_MONTHLY.
+   - Monthly charts read MONTHLY_ENGINE.
    - Charts only show data up to CONTROL_CONFIG current_year/current_month.
-   - Adds spending breakdown charts from YEARLY_DISCRETIONARY_ENGINE.
-   - Adds revenue breakdown charts from YEARLY_REVENUE_ENGINE.
-   - Adds mandatory spending chart from YEARLY_MANDATORY_ENGINE.
+   - Adds yearly revenue, discretionary spending, and mandatory spending chart breakdowns.
+   - Adds current fiscal year donut / circle charts for revenue, discretionary spending, and mandatory spending.
+   - Donut charts are small cards and clickable to enlarge in a modal.
 */
 
 (function () {
@@ -135,6 +135,83 @@
     { id: "mandatory_gdp", title: "Mandatory % GDP", keys: ["mandatory_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
 
+  const PIE_REVENUE_FIELDS = [
+    ["income_0_10k_revenue", "Income $0–10k"],
+    ["income_10_30k_revenue", "Income $10k–30k"],
+    ["income_30_60k_revenue", "Income $30k–60k"],
+    ["income_60_100k_revenue", "Income $60k–100k"],
+    ["income_100_250k_revenue", "Income $100k–250k"],
+    ["income_250_500k_revenue", "Income $250k–500k"],
+    ["income_500_1000k_revenue", "Income $500k–1M"],
+    ["income_1000k_5m_revenue", "Income $1M–5M"],
+    ["income_5m_10m_revenue", "Income $5M–10M"],
+    ["income_10m_plus_revenue", "Income $10M+"],
+    ["corp_0_50k_revenue", "Corporate $0–50k"],
+    ["corp_50_500k_revenue", "Corporate $50k–500k"],
+    ["corp_500k_5m_revenue", "Corporate $500k–5M"],
+    ["corp_5m_10m_revenue", "Corporate $5M–10M"],
+    ["corp_10m_100m_revenue", "Corporate $10M–100M"],
+    ["corp_100m_1b_revenue", "Corporate $100M–1B"],
+    ["corp_1b_plus_revenue", "Corporate $1B+"],
+    ["payroll_medicare_revenue", "Medicare Payroll"],
+    ["payroll_social_security_revenue", "Social Security Payroll"],
+    ["payroll_worker_revenue", "Worker Payroll"],
+    ["sales_tax_revenue", "Sales Tax"],
+    ["cap_gains_short_term_revenue", "Short-Term Capital Gains"],
+    ["cap_gains_long_term_revenue", "Long-Term Capital Gains"],
+    ["excise_tax_revenue", "Excise Tax"],
+    ["ucare_revenue", "UCare Revenue"],
+    ["event_revenue_impact", "Event Revenue Impact"],
+    ["direct_revenue", "Direct Revenue"]
+  ];
+
+  const PIE_DISCRETIONARY_FIELDS = [
+    ["defense_spending", "Defense"],
+    ["education_spending", "Education"],
+    ["health_social_admin_spending", "Health & Social Admin"],
+    ["transportation_spending", "Transportation"],
+    ["treasury_spending", "Treasury"],
+    ["veterans_affairs_spending", "Veterans Affairs"],
+    ["homeland_security_spending", "Homeland Security"],
+    ["justice_spending", "Justice"],
+    ["state_foreign_affairs_spending", "State / Foreign Affairs"],
+    ["interior_natural_resources_spending", "Interior / Natural Resources"],
+    ["agriculture_spending", "Agriculture"],
+    ["energy_spending", "Energy"],
+    ["commerce_spending", "Commerce"],
+    ["labor_spending", "Labor"],
+    ["housing_urban_development_spending", "HUD"],
+    ["environmental_protection_spending", "EPA"],
+    ["nasa_spending", "NASA"],
+    ["sba_spending", "SBA"],
+    ["other_agencies_spending", "Other Agencies"],
+    ["general_government_spending", "General Government"],
+    ["event_direct_cost", "Event Direct Cost"],
+    ["event_cost_from_pct_gdp", "Event Cost From GDP"]
+  ];
+
+  const PIE_MANDATORY_FIELDS = [
+    ["social_security_cost", "Social Security"],
+    ["medicare_cost", "Medicare"],
+    ["medicaid_cost", "Medicaid"],
+    ["snap_cost", "SNAP"],
+    ["child_health_cost", "Child Health"],
+    ["fcwa_cost", "FCWA"],
+    ["fed_civilian_retirement_cost", "Civilian Retirement"],
+    ["fed_military_retirement_cost", "Military Retirement"],
+    ["ssi_cost", "SSI"],
+    ["mandatory_direct_cost", "Mandatory Direct Cost"]
+  ];
+
+  const PIE_COLORS = [
+    "#1d4ed8", "#b91c1c", "#047857", "#7c3aed", "#c2410c",
+    "#0f766e", "#be123c", "#4338ca", "#a16207", "#0369a1",
+    "#15803d", "#6d28d9", "#dc2626", "#2563eb", "#65a30d",
+    "#9333ea", "#0891b2", "#ea580c", "#4f46e5", "#16a34a",
+    "#854d0e", "#0e7490", "#9f1239", "#1e40af", "#166534",
+    "#581c87", "#991b1b"
+  ];
+
   const TOP_YEARLY_TILES = [
     "gdp",
     "debt",
@@ -260,7 +337,6 @@
 
   function filterRowsToCurrentPeriod(rows) {
     if (!Array.isArray(rows)) return [];
-
     if (!CURRENT_YEAR) return rows;
 
     return rows.filter((row) => {
@@ -710,6 +786,142 @@
         border-radius: 0 10px 10px 0;
       }
 
+      .econ-pie-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .econ-pie-card {
+        border: 1px solid rgba(15,23,42,.14);
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(241,245,249,.9));
+        box-shadow: 0 12px 26px rgba(15,23,42,.08);
+        padding: 12px;
+        cursor: pointer;
+        transition: transform .15s ease, box-shadow .15s ease;
+      }
+
+      .econ-pie-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 34px rgba(15,23,42,.11);
+      }
+
+      .econ-pie-card h3 {
+        margin: 4px 0 2px;
+        color: #07111f;
+        font-family: Georgia, serif;
+        font-size: 1rem;
+      }
+
+      .econ-pie-wrap {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+      }
+
+      .econ-pie-svg {
+        width: 150px;
+        height: 150px;
+      }
+
+      .econ-pie-legend {
+        display: grid;
+        gap: 5px;
+        max-height: 150px;
+        overflow: auto;
+        padding-right: 4px;
+      }
+
+      .econ-pie-legend-row {
+        display: grid;
+        grid-template-columns: 10px minmax(0, 1fr) auto;
+        gap: 6px;
+        align-items: center;
+        color: #334155;
+        font-size: .68rem;
+        font-weight: 850;
+      }
+
+      .econ-pie-legend-row span:nth-child(2) {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .econ-pie-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+      }
+
+      .econ-pie-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        place-items: center;
+        padding: 20px;
+        background: rgba(2,6,23,.72);
+        backdrop-filter: blur(8px);
+      }
+
+      .econ-pie-modal.is-open {
+        display: grid;
+      }
+
+      .econ-pie-modal-card {
+        width: min(980px, 96vw);
+        max-height: 92vh;
+        overflow: auto;
+        border-radius: 24px;
+        background: #f8fafc;
+        border: 1px solid rgba(255,255,255,.22);
+        box-shadow: 0 28px 80px rgba(0,0,0,.35);
+        padding: 18px;
+      }
+
+      .econ-pie-modal-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .econ-pie-modal-top h2 {
+        margin: 0;
+        color: #07111f;
+        font-family: Georgia, serif;
+      }
+
+      .econ-pie-close {
+        border: 0;
+        border-radius: 999px;
+        background: #07111f;
+        color: #fff;
+        font-weight: 1000;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      .econ-pie-modal-body {
+        display: grid;
+        grid-template-columns: 420px minmax(0, 1fr);
+        gap: 16px;
+        align-items: center;
+      }
+
+      .econ-pie-modal-body .econ-pie-svg {
+        width: 420px;
+        height: 420px;
+      }
+
+      .econ-pie-modal-body .econ-pie-legend {
+        max-height: 420px;
+      }
+
       @media (max-width: 1200px) {
         .econ-top-grid,
         .econ-chart-grid {
@@ -718,6 +930,22 @@
 
         .econ-tile-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 1000px) {
+        .econ-pie-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .econ-pie-modal-body {
+          grid-template-columns: 1fr;
+        }
+
+        .econ-pie-modal-body .econ-pie-svg {
+          width: min(420px, 82vw);
+          height: min(420px, 82vw);
+          margin: auto;
         }
       }
 
@@ -733,6 +961,14 @@
 
         .econ-movement-row {
           grid-template-columns: 1fr;
+        }
+
+        .econ-pie-wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .econ-pie-svg {
+          margin: auto;
         }
       }
     `;
@@ -803,6 +1039,185 @@
         }).join("")}
       </svg>
     `;
+  }
+
+  function polarToCartesian(cx, cy, r, angleDeg) {
+    const angleRad = (angleDeg - 90) * Math.PI / 180;
+    return {
+      x: cx + r * Math.cos(angleRad),
+      y: cy + r * Math.sin(angleRad)
+    };
+  }
+
+  function pieSlicePath(cx, cy, rOuter, rInner, startAngle, endAngle) {
+    const startOuter = polarToCartesian(cx, cy, rOuter, endAngle);
+    const endOuter = polarToCartesian(cx, cy, rOuter, startAngle);
+    const startInner = polarToCartesian(cx, cy, rInner, startAngle);
+    const endInner = polarToCartesian(cx, cy, rInner, endAngle);
+    const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
+
+    return [
+      `M ${startOuter.x} ${startOuter.y}`,
+      `A ${rOuter} ${rOuter} 0 ${largeArc} 0 ${endOuter.x} ${endOuter.y}`,
+      `L ${startInner.x} ${startInner.y}`,
+      `A ${rInner} ${rInner} 0 ${largeArc} 1 ${endInner.x} ${endInner.y}`,
+      "Z"
+    ].join(" ");
+  }
+
+  function buildPieData(row, fields) {
+    return fields
+      .map(([key, label]) => ({
+        key,
+        label,
+        value: toNumber(row?.[key], 0)
+      }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }
+
+  function renderPieSvg(items, size = 150) {
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+
+    if (!items.length || total <= 0) {
+      return `<div class="econ-empty">No current-year data.</div>`;
+    }
+
+    const cx = size / 2;
+    const cy = size / 2;
+    const rOuter = size * 0.46;
+    const rInner = size * 0.27;
+
+    let angle = 0;
+
+    const paths = items.map((item, index) => {
+      const slice = (item.value / total) * 360;
+      const start = angle;
+      const end = angle + slice;
+      angle = end;
+
+      const color = PIE_COLORS[index % PIE_COLORS.length];
+
+      return `
+        <path
+          d="${pieSlicePath(cx, cy, rOuter, rInner, start, end)}"
+          fill="${color}"
+        >
+          <title>${safeHTML(item.label)}: ${safeHTML(formatValue(item.value, { prefix: "$" }))}</title>
+        </path>
+      `;
+    }).join("");
+
+    return `
+      <svg class="econ-pie-svg" viewBox="0 0 ${size} ${size}" role="img">
+        ${paths}
+        <circle cx="${cx}" cy="${cy}" r="${rInner * 0.82}" fill="#f8fafc"></circle>
+        <text x="${cx}" y="${cy - 2}" text-anchor="middle" fill="#07111f" font-size="${size * 0.075}" font-weight="1000">
+          ${safeHTML(formatValue(total, { prefix: "$" }))}
+        </text>
+        <text x="${cx}" y="${cy + size * 0.075}" text-anchor="middle" fill="#64748b" font-size="${size * 0.048}" font-weight="900">
+          Total
+        </text>
+      </svg>
+    `;
+  }
+
+  function renderPieLegend(items) {
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+
+    return `
+      <div class="econ-pie-legend">
+        ${items.map((item, index) => {
+          const pct = total ? (item.value / total) * 100 : 0;
+          return `
+            <div class="econ-pie-legend-row">
+              <span class="econ-pie-dot" style="background:${PIE_COLORS[index % PIE_COLORS.length]}"></span>
+              <span title="${safeHTML(item.label)}">${safeHTML(item.label)}</span>
+              <strong>${safeHTML(pct.toFixed(1))}%</strong>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function pieCard(title, subtitle, row, fields, modalId) {
+    const items = buildPieData(row, fields);
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+
+    return `
+      <article class="econ-pie-card" data-pie-modal="${safeHTML(modalId)}">
+        <div class="econ-eyebrow">Current Fiscal Year</div>
+        <h3>${safeHTML(title)}</h3>
+        <div class="econ-chart-meta">${safeHTML(subtitle)} • ${safeHTML(formatValue(total, { prefix: "$" }))}</div>
+        <div class="econ-pie-wrap">
+          ${renderPieSvg(items, 150)}
+          ${renderPieLegend(items)}
+        </div>
+      </article>
+    `;
+  }
+
+  function pieModal(id, title, row, fields) {
+    const items = buildPieData(row, fields);
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+
+    return `
+      <div class="econ-pie-modal" id="${safeHTML(id)}" aria-hidden="true">
+        <div class="econ-pie-modal-card">
+          <div class="econ-pie-modal-top">
+            <div>
+              <div class="econ-eyebrow">Expanded Current Fiscal Year Chart</div>
+              <h2>${safeHTML(title)}</h2>
+              <p class="econ-note">Total: ${safeHTML(formatValue(total, { prefix: "$" }))}</p>
+            </div>
+            <button class="econ-pie-close" type="button" data-pie-close>Close</button>
+          </div>
+          <div class="econ-pie-modal-body">
+            ${renderPieSvg(items, 420)}
+            ${renderPieLegend(items)}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function setupPieModals() {
+    document.querySelectorAll("[data-pie-modal]").forEach((card) => {
+      card.addEventListener("click", () => {
+        const id = card.dataset.pieModal;
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.add("is-open");
+        modal.setAttribute("aria-hidden", "false");
+      });
+    });
+
+    document.querySelectorAll("[data-pie-close]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const modal = button.closest(".econ-pie-modal");
+        if (!modal) return;
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    });
+
+    document.querySelectorAll(".econ-pie-modal").forEach((modal) => {
+      modal.addEventListener("click", (event) => {
+        if (event.target !== modal) return;
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      document.querySelectorAll(".econ-pie-modal.is-open").forEach((modal) => {
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    });
   }
 
   function macroTile(stat, latest, previous) {
@@ -1056,7 +1471,13 @@
 
     const latest = latestMacroRow();
     const previous = previousMacroRow();
+
+    const latestRevenue = latestRow(REVENUE_ROWS, REVENUE_STATS);
+    const latestDiscretionary = latestRow(DISCRETIONARY_ROWS, SPENDING_STATS);
+    const latestMandatory = latestRow(MANDATORY_ROWS, MANDATORY_STATS);
+
     const year = firstValue(latest, ["year", "date"], CURRENT_YEAR ? `FY${CURRENT_YEAR}` : "Latest Year");
+
     const currentPeriodLabel = CURRENT_YEAR
       ? CURRENT_MONTH
         ? `Showing through ${monthNumberToName(CURRENT_MONTH)} ${CURRENT_YEAR}`
@@ -1097,6 +1518,26 @@
                 </div>
               </aside>
             </div>
+          </section>
+
+          <section class="econ-section">
+            <div class="econ-heading">
+              <div>
+                <div class="econ-eyebrow">Current Fiscal Year Breakdown</div>
+                <h2>Budget Composition</h2>
+                <p>Click any circle chart to enlarge. Uses the latest active fiscal-year rows from the revenue, discretionary, and mandatory engines.</p>
+              </div>
+            </div>
+
+            <div class="econ-pie-grid">
+              ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS, "revenue-pie-modal")}
+              ${pieCard("Discretionary Spending", "Department and agency appropriations", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
+              ${pieCard("Mandatory Spending", "Entitlements and obligations", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
+            </div>
+
+            ${pieModal("revenue-pie-modal", "Revenue Breakdown", latestRevenue, PIE_REVENUE_FIELDS)}
+            ${pieModal("spending-pie-modal", "Discretionary Spending Breakdown", latestDiscretionary, PIE_DISCRETIONARY_FIELDS)}
+            ${pieModal("mandatory-pie-modal", "Mandatory Spending Breakdown", latestMandatory, PIE_MANDATORY_FIELDS)}
           </section>
 
           <section class="econ-section">
@@ -1215,6 +1656,7 @@
     renderRevenueCharts("All");
     renderSpendingCharts("All");
     renderMandatoryCharts("All");
+    setupPieModals();
   }
 
   function updateHeroCard() {
@@ -1225,6 +1667,7 @@
     const latestRevenue = latestRow(REVENUE_ROWS, REVENUE_STATS);
     const latestSpending = latestRow(DISCRETIONARY_ROWS, SPENDING_STATS);
     const year = firstValue(latest, ["year", "date"], CURRENT_YEAR ? `FY${CURRENT_YEAR}` : "Latest");
+
     const monthlyCount = MONTHLY_ROWS.length.toLocaleString();
     const yearlyCount = ECON_ROWS.length.toLocaleString();
 
