@@ -1,5 +1,6 @@
 /* APRP Federal Archive — Google Sheets Loader
    Public read-only CSV data source.
+
    Exposes:
    window.APRP_SHEETS.loadSheet("WEB_POTUS")
    window.APRP.fetchSheet("WEB_POTUS")
@@ -8,66 +9,49 @@
 (function () {
   "use strict";
 
+  const BASE_PUBLISHED =
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub";
+
+  function csvUrl(gid) {
+    return `${BASE_PUBLISHED}?gid=${gid}&single=true&output=csv`;
+  }
+
   const SHEET_URLS = {
-    WEB_DISTRICTS:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=54284877&single=true&output=csv",
+    WEB_DISTRICTS: csvUrl("54284877"),
+    WEB_SCHEDULE: csvUrl("1653914288"),
+    WEB_POTUS: csvUrl("901665208"),
+    WEB_POTUSELECTION: csvUrl("1353061052"),
+    WEB_CONGRESSELECTION: csvUrl("1659353703"),
+    WEB_EVENTS: csvUrl("529032081"),
+    WEB_ECON: csvUrl("141774572"),
+    WEB_MONTHLY: csvUrl("176907832"),
+    WEB_SEN: csvUrl("1840346777"),
+    WEB_LDR: csvUrl("454262652"),
+    WEB_GOV: csvUrl("1471855876"),
 
-    WEB_SCHEDULE:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1653914288&single=true&output=csv",
+    WEB_LIVECANDIDATES: csvUrl("617619834"),
+    WEB_LIVECONFIG: csvUrl("1797016145"),
+    WEB_LIVESTATES: csvUrl("2055041221"),
+    WEB_LIVERESULTS: csvUrl("1250982415"),
 
-    WEB_POTUS:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=901665208&single=true&output=csv",
+    CALC_STATE_BASELINES: csvUrl("861381015"),
+    CALC_LOBBIES: csvUrl("1863807899"),
+    CALC_EXPERIENCE: csvUrl("1581446706"),
+    CALC_EXPERIANCE: csvUrl("1581446706"),
+    CALC_RULES: csvUrl("1782585164"),
 
-    WEB_POTUSELECTION:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1353061052&single=true&output=csv",
-
-    WEB_CONGRESSELECTION:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1659353703&single=true&output=csv",
-
-    WEB_EVENTS:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=529032081&single=true&output=csv",
-
-    WEB_ECON:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=141774572&single=true&output=csv",
-
-    WEB_MONTHLY:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=176907832&single=true&output=csv",
-
-    WEB_SEN:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1840346777&single=true&output=csv",
-
-    WEB_LDR:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=454262652&single=true&output=csv",
-
-    WEB_GOV:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1471855876&single=true&output=csv",
-
-    WEB_LIVECANDIDATES:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=617619834&single=true&output=csv",
-
-    WEB_LIVECONFIG:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1797016145&single=true&output=csv",
-
-    WEB_LIVESTATES:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=2055041221&single=true&output=csv",
-
-    WEB_LIVERESULTS:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1250982415&single=true&output=csv",
-
-    CALC_STATE_BASELINES:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=861381015&single=true&output=csv",
-
-    CALC_LOBBIES:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1863807899&single=true&output=csv",
-
-    CALC_EXPERIENCE:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1581446706&single=true&output=csv",
-
-    CALC_EXPERIANCE:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1581446706&single=true&output=csv",
-
-    CALC_RULES:
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdNuab7OkXjYKw_DEPLXz1Urb8q4-8kwhcqPt1M7A-fxJa-9F6Cq6opGIKpUCf3KU29vo5PfvMCUNu/pub?gid=1782585164&single=true&output=csv"
+    /* New economy model sheets */
+    MONTHLY_ENGINE: csvUrl("1827825411"),
+    CONTROL_CONFIG: csvUrl("1448726664"),
+    YEARLY_FISCAL_OUTPUT: csvUrl("845310261"),
+    YEARLY_MANDATORY_ENGINE: csvUrl("30195170"),
+    YEARLY_DISCRETIONARY_ENGINE: csvUrl("74370148"),
+    TAX_RATES_BY_YEAR: csvUrl("166104065"),
+    YEARLY_REVENUE_ENGINE: csvUrl("1809546509"),
+    YEARLY_MACRO_ENGINE: csvUrl("1835858612"),
+    MODEL_RULES: csvUrl("1216190815"),
+    EVENT_POLICY_INPUTS: csvUrl("1492685747"),
+    YEARLY_CONFIG: csvUrl("759592504")
   };
 
   const CACHE = new Map();
@@ -207,6 +191,25 @@
     return Object.fromEntries(entries);
   }
 
+  async function loadEconomyModel(options = {}) {
+    return loadSheets(
+      [
+        "MONTHLY_ENGINE",
+        "CONTROL_CONFIG",
+        "YEARLY_FISCAL_OUTPUT",
+        "YEARLY_MANDATORY_ENGINE",
+        "YEARLY_DISCRETIONARY_ENGINE",
+        "TAX_RATES_BY_YEAR",
+        "YEARLY_REVENUE_ENGINE",
+        "YEARLY_MACRO_ENGINE",
+        "MODEL_RULES",
+        "EVENT_POLICY_INPUTS",
+        "YEARLY_CONFIG"
+      ],
+      options
+    );
+  }
+
   function toNumber(value, fallback = 0) {
     const cleaned = cleanCell(value)
       .replace(/[$,%]/g, "")
@@ -218,9 +221,19 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
+  function toPercentDecimal(value, fallback = 0) {
+    const raw = cleanCell(value);
+    if (raw === "") return fallback;
+
+    const number = toNumber(raw, NaN);
+    if (!Number.isFinite(number)) return fallback;
+
+    return raw.includes("%") ? number / 100 : number;
+  }
+
   function toBool(value) {
     const normalized = cleanCell(value).toLowerCase();
-    return ["true", "yes", "y", "1", "live", "on"].includes(normalized);
+    return ["true", "yes", "y", "1", "live", "on", "previous"].includes(normalized);
   }
 
   function formatNumber(value, fallback = "—") {
@@ -248,9 +261,29 @@
     }).format(number)}B`;
   }
 
-  function formatPercent(value, fallback = "—") {
+  function formatMoney(value, fallback = "—") {
     const number = toNumber(value, NaN);
     if (!Number.isFinite(number)) return fallback;
+
+    return `$${new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 0
+    }).format(number)}`;
+  }
+
+  function formatPercent(value, fallback = "—") {
+    const raw = cleanCell(value);
+    const number = toNumber(raw, NaN);
+    if (!Number.isFinite(number)) return fallback;
+
+    if (raw.includes("%")) {
+      return `${number.toFixed(number % 1 === 0 ? 0 : 1)}%`;
+    }
+
+    if (Math.abs(number) <= 1) {
+      const pct = number * 100;
+      return `${pct.toFixed(pct % 1 === 0 ? 0 : 1)}%`;
+    }
+
     return `${number.toFixed(number % 1 === 0 ? 0 : 1)}%`;
   }
 
@@ -287,9 +320,12 @@
   }
 
   function getConfigValue(configRows, key, fallback = "") {
-    const found = configRows.find(
-      (row) => cleanCell(row.key).toLowerCase() === cleanCell(key).toLowerCase()
-    );
+    const target = cleanCell(key).toLowerCase();
+
+    const found = configRows.find((row) => {
+      const rowKey = cleanCell(row.key || row.setting || row.name).toLowerCase();
+      return rowKey === target;
+    });
 
     return found ? cleanCell(found.value) : fallback;
   }
@@ -308,9 +344,27 @@
   }
 
   function getCurrentYearRow(rows) {
-    const current = rows.find((row) => cleanCell(row.is_current).toLowerCase() === "true");
+    const current = rows.find((row) => {
+      const value = cleanCell(row.is_current || row.active).toLowerCase();
+      return value === "true" || value === "current";
+    });
+
     if (current) return current;
+
     return sortByNumber(rows, "year", "desc")[0] || null;
+  }
+
+  function getCurrentModelYear(controlConfig, fallback = "") {
+    return toNumber(getConfigValue(controlConfig, "current_year", fallback), fallback);
+  }
+
+  function getCurrentModelMonth(controlConfig, fallback = "") {
+    return toNumber(getConfigValue(controlConfig, "current_month", fallback), fallback);
+  }
+
+  function findYearRow(rows, year) {
+    const target = Number(year);
+    return rows.find((row) => toNumber(row.year, NaN) === target) || null;
   }
 
   function getPartyClass(party) {
@@ -393,8 +447,10 @@
 
   window.APRP_SHEETS = {
     ...SHEET_URLS,
+    urls: SHEET_URLS,
     loadSheet,
     loadSheets,
+    loadEconomyModel,
     fetchSheet: loadSheet,
     fetchSheets: loadSheets,
     parseCSV,
@@ -406,14 +462,17 @@
     fetchSheets: loadSheets,
     loadSheet,
     loadSheets,
+    loadEconomyModel,
     parseCSV,
     rowsToObjects,
     cleanCell,
     normalizeHeader,
     toNumber,
+    toPercentDecimal,
     toBool,
     formatNumber,
     formatCompactNumber,
+    formatMoney,
     formatMoneyBillions,
     formatPercent,
     groupBy,
@@ -422,6 +481,9 @@
     getConfigValue,
     getMostRecentByDate,
     getCurrentYearRow,
+    getCurrentModelYear,
+    getCurrentModelMonth,
+    findYearRow,
     getPartyClass,
     getPartyLabel,
     safeHTML,
