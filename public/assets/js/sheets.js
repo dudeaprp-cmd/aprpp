@@ -1,9 +1,5 @@
 /* APRP Federal Archive — Google Sheets Loader
    Public read-only CSV data source.
-
-   Exposes:
-   window.APRP_SHEETS.loadSheet("WEB_POTUS")
-   window.APRP.fetchSheet("WEB_POTUS")
 */
 
 (function () {
@@ -17,7 +13,6 @@
   }
 
   const SHEET_URLS = {
-    /* Existing public website sheets */
     WEB_DISTRICTS: csvUrl("54284877"),
     WEB_SCHEDULE: csvUrl("1653914288"),
     WEB_POTUS: csvUrl("901665208"),
@@ -26,7 +21,6 @@
     WEB_EVENTS: csvUrl("529032081"),
     WEB_ECON: csvUrl("141774572"),
 
-    /* WEB_MONTHLY now mirrors MONTHLY_ENGINE */
     WEB_MONTHLY: csvUrl("1827825411"),
     MONTHLY_ENGINE: csvUrl("1827825411"),
 
@@ -45,7 +39,6 @@
     CALC_EXPERIANCE: csvUrl("1581446706"),
     CALC_RULES: csvUrl("1782585164"),
 
-    /* Economy model sheets */
     CONTROL_CONFIG: csvUrl("1448726664"),
     YEARLY_FISCAL_OUTPUT: csvUrl("845310261"),
     YEARLY_MANDATORY_ENGINE: csvUrl("30195170"),
@@ -196,20 +189,20 @@
   }
 
   async function loadSheetsSafe(sheetNames, options = {}) {
-    const result = {};
+    const output = {};
 
     await Promise.all(
       sheetNames.map(async (sheetName) => {
         try {
-          result[sheetName] = await loadSheet(sheetName, options);
+          output[sheetName] = await loadSheet(sheetName, options);
         } catch (error) {
           console.warn(`APRP sheet failed to load: ${sheetName}`, error);
-          result[sheetName] = [];
+          output[sheetName] = [];
         }
       })
     );
 
-    return result;
+    return output;
   }
 
   async function loadEconomyModel(options = {}) {
@@ -260,6 +253,7 @@
   function formatNumber(value, fallback = "—") {
     const number = toNumber(value, NaN);
     if (!Number.isFinite(number)) return fallback;
+
     return new Intl.NumberFormat("en-US").format(number);
   }
 
