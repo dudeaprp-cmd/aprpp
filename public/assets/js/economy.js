@@ -2,16 +2,16 @@
    Full rewrite:
    - Fixes GDP per capita
    - Fixes population display
-   - Fixes interest-on-debt chart/stat scaling
-   - Shows UCare revenue and UCare spending in charts + pies
-   - Uses fiscal output for interest ONLY
-   - Uses mandatory engine for mandatory programs ONLY
+   - Fixes interest-on-debt stat/chart/pie scale
+   - Shows UCare revenue and UCare spending
+   - Adds chart year range controls
+   - Adds previous fiscal year macro dropdown
 */
 
 (function () {
   "use strict";
 
-  console.log("ECONOMY.JS LOADED — v20260515-hardfix-gdp-interest-ucare");
+  console.log("ECONOMY.JS LOADED — v20260515-range-dropdown-hardfix");
 
   const APRP = window.APRP || {};
   const fetchSheets = APRP.fetchSheets;
@@ -41,20 +41,6 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
-  function parsePercentLike(value, fallback = null) {
-    if (value === null || value === undefined || value === "") return fallback;
-
-    const raw = String(value).trim();
-    const parsed = toNumber(raw, fallback);
-
-    if (parsed === null || !Number.isFinite(parsed)) return fallback;
-
-    if (raw.includes("%")) return parsed / 100;
-    if (Math.abs(parsed) > 1) return parsed / 100;
-
-    return parsed;
-  }
-
   let ECON_ROWS = [];
   let MONTHLY_ROWS = [];
   let CONTROL_ROWS = [];
@@ -67,7 +53,11 @@
 
   let CURRENT_YEAR = null;
   let CURRENT_MONTH = null;
+
   let MONTHLY_RANGE = "all";
+  let CHART_START_YEAR = null;
+  let CHART_END_YEAR = null;
+  let SELECTED_COMPARE_YEAR = null;
 
   const YEARLY_STATS = [
     { id: "gdp", title: "GDP", keys: ["real_gdp", "gdp", "nominal_gdp"], prefix: "$", group: "Output", changeType: "absolute" },
@@ -199,27 +189,22 @@
   ];
 
   const PIE_REVENUE_FIELDS = [
-    ["income_0_10k_revenue", "Income $0–10k"],
-    ["income_10_30k_revenue", "Income $10k–30k"],
-    ["income_30_60k_revenue", "Income $30k–60k"],
+    ["payroll_social_security_revenue", "Social Security Payroll"],
     ["income_60_100k_revenue", "Income $60k–100k"],
     ["income_100_250k_revenue", "Income $100k–250k"],
-    ["income_250_500k_revenue", "Income $250k–500k"],
-    ["income_500_1000k_revenue", "Income $500k–1M"],
-    ["income_1000k_5m_revenue", "Income $1M–5M"],
-    ["income_5m_10m_revenue", "Income $5M–10M"],
-    ["income_10m_plus_revenue", "Income $10M+"],
-    ["corp_0_50k_revenue", "Corporate $0–50k"],
-    ["corp_50_500k_revenue", "Corporate $50k–500k"],
-    ["corp_500k_5m_revenue", "Corporate $500k–5M"],
-    ["corp_5m_10m_revenue", "Corporate $5M–10M"],
-    ["corp_10m_100m_revenue", "Corporate $10M–100M"],
-    ["corp_100m_1b_revenue", "Corporate $100M–1B"],
-    ["corp_1b_plus_revenue", "Corporate $1B+"],
+    ["income_30_60k_revenue", "Income $30k–60k"],
     ["payroll_medicare_revenue", "Medicare Payroll"],
-    ["payroll_social_security_revenue", "Social Security Payroll"],
-    ["payroll_worker_revenue", "Worker Payroll"],
+    ["income_10_30k_revenue", "Income $10k–30k"],
+    ["income_250_500k_revenue", "Income $250k–500k"],
     ["ucare_revenue", "UCare Revenue"],
+    ["income_0_10k_revenue", "Income $0–10k"],
+    ["corp_1b_plus_revenue", "Corporate $1B+"],
+    ["corp_100m_1b_revenue", "Corporate $100M–1B"],
+    ["corp_10m_100m_revenue", "Corporate $10M–100M"],
+    ["corp_5m_10m_revenue", "Corporate $5M–10M"],
+    ["corp_500k_5m_revenue", "Corporate $500k–5M"],
+    ["corp_50_500k_revenue", "Corporate $50k–500k"],
+    ["corp_0_50k_revenue", "Corporate $0–50k"],
     ["sales_tax_revenue", "Sales Tax"],
     ["cap_gains_short_term_revenue", "Short-Term Capital Gains"],
     ["cap_gains_long_term_revenue", "Long-Term Capital Gains"],
@@ -230,17 +215,16 @@
 
   const PIE_DISCRETIONARY_FIELDS = [
     ["defense_spending", "Defense"],
-    ["education_spending", "Education"],
-    ["health_social_admin_spending", "Health & Social Admin"],
     ["transportation_spending", "Transportation"],
-    ["treasury_spending", "Treasury"],
+    ["education_spending", "Education"],
     ["veterans_affairs_spending", "Veterans Affairs"],
+    ["health_social_admin_spending", "Health & Social Admin"],
     ["homeland_security_spending", "Homeland Security"],
+    ["energy_spending", "Energy"],
     ["justice_spending", "Justice"],
     ["state_foreign_affairs_spending", "State / Foreign Affairs"],
     ["interior_natural_resources_spending", "Interior / Natural Resources"],
     ["agriculture_spending", "Agriculture"],
-    ["energy_spending", "Energy"],
     ["commerce_spending", "Commerce"],
     ["labor_spending", "Labor"],
     ["housing_urban_development_spending", "HUD"],
@@ -256,16 +240,16 @@
   const PIE_MANDATORY_FIELDS = [
     ["social_security_cost", "Social Security"],
     ["medicare_cost", "Medicare"],
+    ["other_mandatory_cost", "Other Mandatory"],
+    ["__interest_from_fiscal__", "Interest on Debt"],
     ["medicaid_cost", "Medicaid"],
     ["ucare_cost", "UCare Spending"],
-    ["snap_cost", "SNAP"],
-    ["child_health_cost", "Child Health"],
     ["fcwa_cost", "FCWA"],
-    ["fed_civilian_retirement_cost", "Civilian Retirement"],
-    ["fed_military_retirement_cost", "Military Retirement"],
     ["ssi_cost", "SSI"],
-    ["__interest_from_fiscal__", "Interest on Debt"],
-    ["other_mandatory_cost", "Other Mandatory"],
+    ["child_health_cost", "Child Health"],
+    ["fed_military_retirement_cost", "Military Retirement"],
+    ["fed_civilian_retirement_cost", "Civilian Retirement"],
+    ["snap_cost", "SNAP"],
     ["mandatory_direct_cost", "Other Mandatory Direct Cost"]
   ];
 
@@ -287,6 +271,7 @@
       const value = cleanCell(row?.[key]);
       if (value !== "") return value;
     }
+
     return fallback;
   }
 
@@ -296,13 +281,13 @@
     return match ? match[0] : "";
   }
 
-  function normalizeHeaderKey(key) {
-    return cleanCell(key).toLowerCase();
+  function yearNumber(row) {
+    return toNumber(yearKey(row), null);
   }
 
   function findRowByYear(rows, year) {
-    const y = String(year || "");
-    return rows.find((r) => yearKey(r) === y) || null;
+    const target = String(year || "");
+    return rows.find((row) => yearKey(row) === target) || null;
   }
 
   function mergeRowsByYear(...groups) {
@@ -321,36 +306,8 @@
     return [...map.values()].sort((a, b) => Number(yearKey(a)) - Number(yearKey(b)));
   }
 
-  function getRawInterestFromFiscal(row) {
-    const year = yearKey(row);
-    const fiscalRow = findRowByYear(FISCAL_ROWS, year);
-
-    if (!fiscalRow) return 0;
-
-    let value = toNumber(fiscalRow.interest_cost, null);
-
-    if (value === null || !Number.isFinite(value)) return 0;
-
-    // Hard guard:
-    // normal APRP interest_cost is hundreds to low thousands.
-    // If the site ever reads 50,000+ from stale or bad source,
-    // this prevents the donut from exploding.
-    if (value > 5000) {
-      console.warn("Interest on debt was too high; dividing by 100:", { year, value });
-      value = value / 100;
-    }
-
-    if (value > 5000) {
-      console.warn("Interest on debt still too high; hiding bad value:", { year, value });
-      value = 0;
-    }
-
-    return value;
-  }
-
   function getGDP(row) {
     const direct = toNumber(row.real_gdp ?? row.gdp ?? row.nominal_gdp, null);
-
     if (direct !== null && Number.isFinite(direct)) return direct;
 
     const macroRow = findRowByYear(MACRO_ROWS, yearKey(row));
@@ -361,7 +318,6 @@
 
   function getPopulationRaw(row) {
     const direct = toNumber(row.population, null);
-
     if (direct !== null && Number.isFinite(direct)) return direct;
 
     const macroRow = findRowByYear(MACRO_ROWS, yearKey(row));
@@ -372,7 +328,6 @@
 
   function getPopulationMillions(row) {
     const raw = getPopulationRaw(row);
-
     if (raw === null || !Number.isFinite(raw)) return 0;
 
     if (raw > 10000) return raw / 1000000;
@@ -391,6 +346,29 @@
     }
 
     return (gdpBillions * 1000) / popRaw;
+  }
+
+  function getRawInterestFromFiscal(row) {
+    const year = yearKey(row);
+    const fiscalRow = findRowByYear(FISCAL_ROWS, year);
+
+    if (!fiscalRow) return 0;
+
+    let value = toNumber(fiscalRow.interest_cost, null);
+
+    if (value === null || !Number.isFinite(value)) return 0;
+
+    if (value > 5000) {
+      console.warn("Interest on debt was too high; dividing by 100:", { year, value });
+      value = value / 100;
+    }
+
+    if (value > 5000) {
+      console.warn("Interest on debt still too high; hiding bad value:", { year, value });
+      value = 0;
+    }
+
+    return value;
   }
 
   function getComputedValue(row, key) {
@@ -555,7 +533,7 @@
     });
 
     if (activeRow) {
-      CURRENT_YEAR = toNumber(activeRow.year, null);
+      CURRENT_YEAR = toNumber(yearKey(activeRow), null);
       CURRENT_MONTH = toNumber(activeRow.month, 12);
     }
   }
@@ -565,7 +543,7 @@
     if (!CURRENT_YEAR) return rows;
 
     return rows.filter((row) => {
-      const y = toNumber(yearKey(row), null);
+      const y = yearNumber(row);
       const m = toNumber(row.month, null);
 
       if (!y) return false;
@@ -575,6 +553,35 @@
       if (!m || !CURRENT_MONTH) return true;
 
       return m <= CURRENT_MONTH;
+    });
+  }
+
+  function allAvailableYears() {
+    return DASHBOARD_ROWS
+      .map((row) => yearNumber(row))
+      .filter((year) => Number.isFinite(year))
+      .sort((a, b) => a - b);
+  }
+
+  function clampDefaultChartYears() {
+    const years = allAvailableYears();
+    if (!years.length) return;
+
+    if (!CHART_START_YEAR) CHART_START_YEAR = years[0];
+    if (!CHART_END_YEAR) CHART_END_YEAR = years[years.length - 1];
+
+    if (!SELECTED_COMPARE_YEAR) {
+      SELECTED_COMPARE_YEAR = CURRENT_YEAR || years[years.length - 1];
+    }
+  }
+
+  function applyYearRange(points) {
+    return points.filter((point) => {
+      const y = yearNumber(point.row);
+      if (!y) return true;
+      if (CHART_START_YEAR && y < CHART_START_YEAR) return false;
+      if (CHART_END_YEAR && y > CHART_END_YEAR) return false;
+      return true;
     });
   }
 
@@ -618,7 +625,6 @@
     REVENUE_ROWS = filterRowsToCurrentPeriod(revenue || []);
     DISCRETIONARY_ROWS = filterRowsToCurrentPeriod(discretionary || []);
 
-    // Mandatory gets macro data for population/GDP calculations, but interest is still forced from FISCAL_ROWS only.
     MANDATORY_ROWS = mergeRowsByYear(
       filterRowsToCurrentPeriod(mandatory || []),
       MACRO_ROWS
@@ -633,23 +639,20 @@
       FISCAL_ROWS
     );
 
-    console.log("FISCAL INTEREST CHECK", FISCAL_ROWS.map((r) => ({
-      year: yearKey(r),
-      interest_cost: r.interest_cost
+    clampDefaultChartYears();
+
+    console.log("FISCAL INTEREST CHECK", FISCAL_ROWS.map((row) => ({
+      year: yearKey(row),
+      interest_cost: row.interest_cost
     })));
 
-    console.log("GDP PER CAPITA CHECK", DASHBOARD_ROWS.map((r) => ({
-      year: yearKey(r),
-      gdp: getGDP(r),
-      populationRaw: getPopulationRaw(r),
-      populationM: getPopulationMillions(r),
-      gdpPerCapita: getGDPPerCapita(r)
+    console.log("GDP PER CAPITA CHECK", DASHBOARD_ROWS.map((row) => ({
+      year: yearKey(row),
+      gdp: getGDP(row),
+      populationRaw: getPopulationRaw(row),
+      populationM: getPopulationMillions(row),
+      gdpPerCapita: getGDPPerCapita(row)
     })));
-
-    console.log("UCare CHECK", {
-      revenue: REVENUE_ROWS.map((r) => ({ year: yearKey(r), ucare_revenue: r.ucare_revenue })),
-      mandatory: MANDATORY_ROWS.map((r) => ({ year: yearKey(r), ucare_cost: r.ucare_cost }))
-    });
   }
 
   function latestRow(rows, stats) {
@@ -666,20 +669,34 @@
     return valid[valid.length - 2] || {};
   }
 
+  function rowForSelectedCompareYear() {
+    return findRowByYear(DASHBOARD_ROWS, SELECTED_COMPARE_YEAR) || latestMacroRow();
+  }
+
+  function rowBeforeYear(year) {
+    const years = allAvailableYears().filter((item) => item < Number(year));
+    if (!years.length) return {};
+    return findRowByYear(DASHBOARD_ROWS, years[years.length - 1]) || {};
+  }
+
   function yearlyPoints(stat) {
-    return DASHBOARD_ROWS.map((row, index) => {
+    const raw = DASHBOARD_ROWS.map((row, index) => {
       const value = getValue(row, stat.keys);
       if (value === null) return null;
       return { label: yearLabel(row, index), value, row };
     }).filter(Boolean);
+
+    return applyYearRange(raw);
   }
 
   function rowPoints(rows, stat) {
-    return rows.map((row, index) => {
+    const raw = rows.map((row, index) => {
       const value = getValue(row, stat.keys);
       if (value === null) return null;
       return { label: yearLabel(row, index), value, row };
     }).filter(Boolean);
+
+    return applyYearRange(raw);
   }
 
   function monthlyPoints(stat) {
@@ -730,7 +747,7 @@
       .econ-heading p {
         margin: 0;
         color: #475569;
-        max-width: 760px;
+        max-width: 800px;
         font-size: .92rem;
         line-height: 1.45;
       }
@@ -821,6 +838,46 @@
         color: #64748b;
         font-size: .64rem;
         font-weight: 850;
+      }
+
+      .econ-control-card {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .econ-select,
+      .econ-input {
+        border: 1px solid rgba(15,23,42,.16);
+        border-radius: 999px;
+        background: rgba(255,255,255,.9);
+        color: #07111f;
+        padding: 7px 10px;
+        font-size: .72rem;
+        font-weight: 1000;
+        outline: none;
+      }
+
+      .econ-control-label {
+        color: #475569;
+        font-size: .62rem;
+        font-weight: 1000;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
+      .econ-range-panel {
+        border: 1px solid rgba(15,23,42,.12);
+        border-radius: 16px;
+        background: rgba(255,255,255,.66);
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
       }
 
       .econ-movement-list { display: grid; gap: 7px; }
@@ -1480,6 +1537,95 @@
     return group === "All" ? stats : stats.filter((stat) => stat.group === group);
   }
 
+  function currentYearRangeLabel() {
+    if (!CHART_START_YEAR || !CHART_END_YEAR) return "All years";
+    return `FY${CHART_START_YEAR}–FY${CHART_END_YEAR}`;
+  }
+
+  function renderYearRangeControls() {
+    const years = allAvailableYears();
+    if (!years.length) return "";
+
+    const options = years.map((year) => `<option value="${year}">FY${year}</option>`).join("");
+
+    return `
+      <div class="econ-range-panel">
+        <div>
+          <div class="econ-eyebrow">Chart Range</div>
+          <p class="econ-note">Viewing ${safeHTML(currentYearRangeLabel())}. Use the controls to narrow chart years.</p>
+        </div>
+
+        <div class="econ-control-card">
+          <span class="econ-control-label">From</span>
+          <select class="econ-select" id="econ-chart-start">
+            ${options}
+          </select>
+
+          <span class="econ-control-label">To</span>
+          <select class="econ-select" id="econ-chart-end">
+            ${options}
+          </select>
+
+          <button class="econ-filter-btn" type="button" id="econ-chart-range-apply">Apply</button>
+          <button class="econ-filter-btn" type="button" id="econ-chart-range-all">All</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function setupYearRangeControls() {
+    const start = getEl("#econ-chart-start");
+    const end = getEl("#econ-chart-end");
+
+    if (start && CHART_START_YEAR) start.value = String(CHART_START_YEAR);
+    if (end && CHART_END_YEAR) end.value = String(CHART_END_YEAR);
+
+    const apply = getEl("#econ-chart-range-apply");
+    if (apply) {
+      apply.addEventListener("click", () => {
+        const startValue = toNumber(start?.value, null);
+        const endValue = toNumber(end?.value, null);
+
+        if (startValue && endValue && startValue <= endValue) {
+          CHART_START_YEAR = startValue;
+          CHART_END_YEAR = endValue;
+        }
+
+        rerenderChartsOnly();
+        const rangeText = getEl("#econ-range-current-text");
+        if (rangeText) rangeText.textContent = currentYearRangeLabel();
+      });
+    }
+
+    const all = getEl("#econ-chart-range-all");
+    if (all) {
+      all.addEventListener("click", () => {
+        const years = allAvailableYears();
+        CHART_START_YEAR = years[0] || null;
+        CHART_END_YEAR = years[years.length - 1] || null;
+
+        if (start && CHART_START_YEAR) start.value = String(CHART_START_YEAR);
+        if (end && CHART_END_YEAR) end.value = String(CHART_END_YEAR);
+
+        rerenderChartsOnly();
+      });
+    }
+  }
+
+  function rerenderChartsOnly() {
+    const yearlyGroup = getEl("#econ-yearly-filters .econ-filter-btn.is-active")?.textContent || "All";
+    const monthlyGroup = getEl("#econ-monthly-filters .econ-filter-btn.is-active")?.textContent || "All";
+    const revenueGroup = getEl("#econ-revenue-filters .econ-filter-btn.is-active")?.textContent || "All";
+    const spendingGroup = getEl("#econ-spending-filters .econ-filter-btn.is-active")?.textContent || "All";
+    const mandatoryGroup = getEl("#econ-mandatory-filters .econ-filter-btn.is-active")?.textContent || "All";
+
+    renderYearlyCharts(yearlyGroup);
+    renderMonthlyCharts(monthlyGroup);
+    renderRevenueCharts(revenueGroup);
+    renderSpendingCharts(spendingGroup);
+    renderMandatoryCharts(mandatoryGroup);
+  }
+
   function renderYearlyCharts(group = "All") {
     const slot = getEl("#econ-yearly-charts");
     if (!slot) return;
@@ -1579,6 +1725,55 @@
     container.appendChild(button);
   }
 
+  function renderCompareDropdown() {
+    const years = allAvailableYears();
+    if (!years.length) return "";
+
+    const options = years
+      .map((year) => `<option value="${year}" ${Number(SELECTED_COMPARE_YEAR) === year ? "selected" : ""}>FY${year}</option>`)
+      .join("");
+
+    return `
+      <div class="econ-range-panel">
+        <div>
+          <div class="econ-eyebrow">Previous Fiscal Year Lookup</div>
+          <p class="econ-note">Choose a fiscal year to show its macro snapshot above, compared against the prior available year.</p>
+        </div>
+
+        <div class="econ-control-card">
+          <span class="econ-control-label">Fiscal Year</span>
+          <select class="econ-select" id="econ-compare-year">
+            ${options}
+          </select>
+        </div>
+      </div>
+    `;
+  }
+
+  function setupCompareDropdown() {
+    const select = getEl("#econ-compare-year");
+    if (!select) return;
+
+    select.addEventListener("change", () => {
+      SELECTED_COMPARE_YEAR = toNumber(select.value, SELECTED_COMPARE_YEAR);
+
+      const selected = rowForSelectedCompareYear();
+      const previous = rowBeforeYear(SELECTED_COMPARE_YEAR);
+
+      const title = getEl("#econ-key-title");
+      if (title) title.textContent = `${yearKey(selected)} Key Indicators`;
+
+      const grid = getEl("#econ-key-tile-grid");
+      if (grid) {
+        const tileStats = TOP_YEARLY_TILES
+          .map((id) => YEARLY_STATS.find((stat) => stat.id === id))
+          .filter(Boolean);
+
+        grid.innerHTML = tileStats.map((stat) => macroTile(stat, selected, previous)).join("");
+      }
+    });
+  }
+
   function renderRecords() {
     const rows = [...DASHBOARD_ROWS]
       .filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null))
@@ -1639,15 +1834,14 @@
   function rebuildEconomyPage() {
     const main = document.querySelector("main") || document.body;
 
-    const latest = latestMacroRow();
-    const previous = previousMacroRow();
+    const latest = rowForSelectedCompareYear();
+    const previous = rowBeforeYear(SELECTED_COMPARE_YEAR);
 
     const latestRevenue = latestRow(REVENUE_ROWS, REVENUE_STATS);
     const latestDiscretionary = latestRow(DISCRETIONARY_ROWS, SPENDING_STATS);
     const latestMandatory = latestRow(MANDATORY_ROWS, MANDATORY_STATS);
 
-    const year = firstValue(latest, ["year", "date"], CURRENT_YEAR ? `FY${CURRENT_YEAR}` : "Latest Year");
-
+    const displayYear = yearKey(latest) || CURRENT_YEAR || "Latest";
     const currentPeriodLabel = CURRENT_YEAR
       ? CURRENT_MONTH
         ? `Showing through ${monthNumberToName(CURRENT_MONTH)} ${CURRENT_YEAR}`
@@ -1666,15 +1860,15 @@
               <div>
                 <div class="econ-eyebrow">Office of Budget Management</div>
                 <h2>Macro Dashboard</h2>
-                <p>${safeHTML(year)} fiscal snapshot. ${safeHTML(currentPeriodLabel)}. Movement is shown as absolute movement or percentage points.</p>
+                <p>${safeHTML(displayYear)} fiscal snapshot. ${safeHTML(currentPeriodLabel)}. Movement is shown as absolute movement or percentage points.</p>
               </div>
             </div>
 
             <div class="econ-top-grid">
               <section class="econ-panel">
                 <div class="econ-eyebrow">Current Year</div>
-                <h3>${safeHTML(year)} Key Indicators</h3>
-                <div class="econ-tile-grid">
+                <h3 id="econ-key-title">${safeHTML(displayYear)} Key Indicators</h3>
+                <div class="econ-tile-grid" id="econ-key-tile-grid">
                   ${tileStats.map((stat) => macroTile(stat, latest, previous)).join("")}
                 </div>
               </section>
@@ -1688,6 +1882,8 @@
                 </div>
               </aside>
             </div>
+
+            ${renderCompareDropdown()}
           </section>
 
           <section class="econ-section">
@@ -1702,7 +1898,7 @@
             <div class="econ-pie-grid">
               ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS, "revenue-pie-modal")}
               ${pieCard("Discretionary Spending", "Departments, agencies, and event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
-              ${pieCard("Mandatory Spending", "Entitlements, UCare, interest, and obligations", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
+              ${pieCard("Mandatory Spending", "Entitlements, interest, obligations, and other costs", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
             </div>
 
             ${pieModal("revenue-pie-modal", "Revenue Breakdown", latestRevenue, PIE_REVENUE_FIELDS)}
@@ -1715,10 +1911,13 @@
               <div>
                 <div class="econ-eyebrow">Yearly Charts</div>
                 <h2>Economic Trends</h2>
-                <p>Yearly indicators filtered to the current active year.</p>
+                <p>Yearly indicators filtered by chart range, including macro, fiscal, revenue, spending, and population.</p>
               </div>
               <div class="econ-filter-bar" id="econ-yearly-filters"></div>
             </div>
+
+            ${renderYearRangeControls()}
+
             <div id="econ-yearly-charts"></div>
           </section>
 
@@ -1821,6 +2020,9 @@
       });
     }
 
+    setupYearRangeControls();
+    setupCompareDropdown();
+
     renderYearlyCharts("All");
     renderMonthlyCharts("All");
     renderRevenueCharts("All");
@@ -1833,12 +2035,12 @@
     const heroCard = getEl(".hero-side-card");
     if (!heroCard) return;
 
-    const latest = latestMacroRow();
+    const latest = rowForSelectedCompareYear();
     const latestRevenue = latestRow(REVENUE_ROWS, REVENUE_STATS);
     const latestSpending = latestRow(DISCRETIONARY_ROWS, SPENDING_STATS);
     const latestMandatory = latestRow(MANDATORY_ROWS, MANDATORY_STATS);
 
-    const year = firstValue(latest, ["year", "date"], CURRENT_YEAR ? `FY${CURRENT_YEAR}` : "Latest");
+    const year = yearKey(latest) || CURRENT_YEAR || "Latest";
 
     const monthlyCount = MONTHLY_ROWS.length.toLocaleString();
     const yearlyCount = DASHBOARD_ROWS.length.toLocaleString();
