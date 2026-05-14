@@ -3,24 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>APRP Federal Archive | Economy</title>
 
-  <!-- Site styles -->
-  <link rel="stylesheet" href="./style.css?v=20260515-ucare-full" />
-
-  <!-- Optional favicon -->
-  <link rel="icon" href="./favicon.ico" />
+  <link rel="stylesheet" href="./style.css?v=20260515-fix1" />
 </head>
 
 <body>
   <header class="site-header">
     <div class="container-wide">
-      <a class="site-logo" href="./index.html">
-        APRP Federal Archive
-      </a>
+      <a class="site-logo" href="./index.html">APRP Federal Archive</a>
 
-      <nav class="site-nav" aria-label="Main navigation">
+      <nav class="site-nav">
         <a href="./index.html">Home</a>
         <a href="./government.html">Government</a>
         <a href="./presidents.html">Presidents</a>
@@ -35,29 +28,41 @@
         <div class="hero-side-card">
           <div class="eyebrow">Office of Budget Management</div>
           <h2>Loading Economy Dashboard</h2>
-          <p>
-            Fetching macro, monthly, revenue, discretionary, mandatory, fiscal,
-            UCare, and interest-on-debt records.
-          </p>
+          <p>Fetching macro, monthly, revenue, discretionary, mandatory, fiscal, UCare, and interest-on-debt records.</p>
         </div>
 
         <div class="econ-loading-card">
           <div class="econ-eyebrow">Economy System</div>
           <h1>Loading...</h1>
           <p>
-            If this stays on screen, check that <strong>sheets.js</strong> loads before
-            <strong>economy.js</strong>, and that your Google Sheets tab names match
-            the economy script.
+            If this stays on screen, either <strong>sheets.js</strong> or <strong>economy.js</strong> failed to load.
           </p>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Required sheet loader. Must load before economy.js. -->
-  <script src="./sheets.js?v=20260515-ucare-full"></script>
+  <script>
+    window.addEventListener("error", function (event) {
+      const root = document.querySelector("#economy-root");
+      if (!root) return;
 
-  <!-- Economy dashboard script. Version bump prevents old cache. -->
-  <script src="./economy.js?v=20260515-ucare-full"></script>
+      root.innerHTML = `
+        <section class="section section-tight">
+          <div class="container-wide">
+            <div style="padding:16px;border:1px solid #b91c1c;border-radius:12px;background:#fee2e2;color:#7f1d1d;">
+              <h2>Economy page failed to load</h2>
+              <p><strong>Error:</strong> ${event.message}</p>
+              <p><strong>File:</strong> ${event.filename}</p>
+              <p><strong>Line:</strong> ${event.lineno}</p>
+            </div>
+          </div>
+        </section>
+      `;
+    });
+  </script>
+
+  <script src="./sheets.js?v=20260515-fix1"></script>
+  <script src="./economy.js?v=20260515-fix1"></script>
 </body>
 </html>
