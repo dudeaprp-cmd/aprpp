@@ -1,5 +1,5 @@
 /* APRP Federal Archive — Economy Page
-   OMB-style compact dashboard.
+   FULL REWRITE — UCare + Interest + Population Fix
 
    Reads:
    - WEB_ECON
@@ -10,22 +10,12 @@
    - YEARLY_REVENUE_ENGINE
    - YEARLY_DISCRETIONARY_ENGINE
    - YEARLY_MANDATORY_ENGINE
-
-   Includes:
-   - Macro key tiles.
-   - Total Revenue tile.
-   - Total Spending tile.
-   - Population tile.
-   - GDP Per Capita auto-calculated from GDP billions / population millions × 1000.
-   - Interest on Debt tile from YEARLY_FISCAL_OUTPUT interest_cost.
-   - Revenue, discretionary, and mandatory donut charts.
-   - Mandatory donut includes Interest on Debt from YEARLY_FISCAL_OUTPUT.
-   - Mandatory donut includes other_mandatory_cost.
-   - Discretionary donut includes event_direct_cost.
 */
 
 (function () {
   "use strict";
+
+  console.log("ECONOMY JS VERSION: UCARE FULL REWRITE 20260515");
 
   const APRP = window.APRP || {};
   const fetchSheets = APRP.fetchSheets;
@@ -64,9 +54,9 @@
   let MANDATORY_ROWS = [];
   let DASHBOARD_ROWS = [];
 
-  let MONTHLY_RANGE = "all";
   let CURRENT_YEAR = null;
   let CURRENT_MONTH = null;
+  let MONTHLY_RANGE = "all";
 
   const YEARLY_STATS = [
     { id: "gdp", title: "GDP", keys: ["gdp", "real_gdp", "nominal_gdp"], prefix: "$", group: "Output", changeType: "absolute" },
@@ -74,7 +64,7 @@
     { id: "total_revenue", title: "Total Revenue", keys: ["total_revenue"], prefix: "$", group: "Fiscal", changeType: "absolute" },
     { id: "total_spending", title: "Total Spending", keys: ["total_spending"], prefix: "$", group: "Fiscal", changeType: "absolute" },
     { id: "deficit", title: "Raw Deficit", keys: ["deficit", "final_surplus_deficit", "deficit_surplus", "raw_deficit"], prefix: "$", group: "Fiscal", changeType: "absolute" },
-    { id: "interest_cost", title: "Interest on Debt", keys: ["interest_cost"], prefix: "$", group: "Fiscal", changeType: "absolute" },
+    { id: "interest_cost", title: "Interest on Debt", keys: ["__interest_from_fiscal__"], prefix: "$", group: "Fiscal", changeType: "absolute" },
 
     { id: "growth", title: "GDP Growth", keys: ["growth", "gdp_growth", "real_growth", "annual_gdp_growth"], suffix: "%", group: "Output", changeType: "pp" },
     { id: "job_creation", title: "Job Creation", keys: ["job_creation", "annual_job_creation", "jobs", "jobs_created", "net_jobs"], group: "Labor", changeType: "absolute" },
@@ -87,6 +77,24 @@
     { id: "debt_gdp", title: "Debt-to-GDP", keys: ["debt_to_gdp", "debt_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
     { id: "deficit_gdp", title: "Deficit-to-GDP", keys: ["deficit_gdp", "deficit_to_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
     { id: "median_wage", title: "Median Wage", keys: ["median_wage", "final_median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" }
+  ];
+
+  const TOP_YEARLY_TILES = [
+    "gdp",
+    "debt",
+    "total_revenue",
+    "total_spending",
+    "deficit",
+    "interest_cost",
+    "growth",
+    "job_creation",
+    "unemployment",
+    "inflation",
+    "population",
+    "gdp_per_capita",
+    "debt_gdp",
+    "deficit_gdp",
+    "median_wage"
   ];
 
   const MONTHLY_STATS = [
@@ -125,7 +133,9 @@
     { id: "cap_short", title: "Short-Term Capital Gains", keys: ["cap_gains_short_term_revenue"], prefix: "$", group: "Capital Gains", changeType: "absolute" },
     { id: "cap_long", title: "Long-Term Capital Gains", keys: ["cap_gains_long_term_revenue"], prefix: "$", group: "Capital Gains", changeType: "absolute" },
     { id: "excise", title: "Excise Tax", keys: ["excise_tax_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
-    { id: "ucare", title: "UCare Revenue", keys: ["ucare_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
+
+    { id: "ucare", title: "UCare Revenue", keys: ["ucare_revenue"], prefix: "$", group: "UCare", changeType: "absolute" },
+
     { id: "event_revenue", title: "Event Revenue Impact", keys: ["event_revenue_impact"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "direct_revenue", title: "Direct Revenue", keys: ["direct_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
 
@@ -166,11 +176,12 @@
     { id: "medicaid", title: "Medicaid", keys: ["medicaid_cost"], prefix: "$", group: "Core Entitlements", changeType: "absolute" },
     { id: "snap", title: "SNAP", keys: ["snap_cost"], prefix: "$", group: "Income Support", changeType: "absolute" },
     { id: "child_health", title: "Child Health", keys: ["child_health_cost"], prefix: "$", group: "Health", changeType: "absolute" },
+    { id: "ucare", title: "UCare Spending", keys: ["ucare_cost"], prefix: "$", group: "Health", changeType: "absolute" },
     { id: "fcwa", title: "FCWA", keys: ["fcwa_cost"], prefix: "$", group: "Worker Benefits", changeType: "absolute" },
     { id: "civilian_retirement", title: "Federal Civilian Retirement", keys: ["fed_civilian_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "military_retirement", title: "Federal Military Retirement", keys: ["fed_military_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "ssi", title: "SSI", keys: ["ssi_cost"], prefix: "$", group: "Income Support", changeType: "absolute" },
-    { id: "interest_cost", title: "Interest on Debt", keys: ["interest_cost"], prefix: "$", group: "Debt Service", changeType: "absolute" },
+    { id: "interest_cost", title: "Interest on Debt", keys: ["__interest_from_fiscal__"], prefix: "$", group: "Debt Service", changeType: "absolute" },
     { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "mandatory_direct", title: "Other Mandatory Direct Cost", keys: ["mandatory_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "total_mandatory", title: "Total Mandatory", keys: ["total_mandatory_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
@@ -198,11 +209,11 @@
     ["payroll_medicare_revenue", "Medicare Payroll"],
     ["payroll_social_security_revenue", "Social Security Payroll"],
     ["payroll_worker_revenue", "Worker Payroll"],
+    ["ucare_revenue", "UCare Revenue"],
     ["sales_tax_revenue", "Sales Tax"],
     ["cap_gains_short_term_revenue", "Short-Term Capital Gains"],
     ["cap_gains_long_term_revenue", "Long-Term Capital Gains"],
     ["excise_tax_revenue", "Excise Tax"],
-    ["ucare_revenue", "UCare Revenue"],
     ["event_revenue_impact", "Event Revenue Impact"],
     ["direct_revenue", "Direct Revenue"]
   ];
@@ -236,13 +247,14 @@
     ["social_security_cost", "Social Security"],
     ["medicare_cost", "Medicare"],
     ["medicaid_cost", "Medicaid"],
+    ["ucare_cost", "UCare Spending"],
     ["snap_cost", "SNAP"],
     ["child_health_cost", "Child Health"],
     ["fcwa_cost", "FCWA"],
     ["fed_civilian_retirement_cost", "Civilian Retirement"],
     ["fed_military_retirement_cost", "Military Retirement"],
     ["ssi_cost", "SSI"],
-    ["interest_cost", "Interest on Debt"],
+    ["__interest_from_fiscal__", "Interest on Debt"],
     ["other_mandatory_cost", "Other Mandatory"],
     ["mandatory_direct_cost", "Other Mandatory Direct Cost"]
   ];
@@ -254,26 +266,6 @@
     "#9333ea", "#0891b2", "#ea580c", "#4f46e5", "#16a34a",
     "#854d0e", "#0e7490", "#9f1239", "#1e40af", "#166534",
     "#581c87", "#991b1b"
-  ];
-
-  const TOP_YEARLY_TILES = [
-    "gdp",
-    "debt",
-    "total_revenue",
-    "total_spending",
-    "deficit",
-
-    "interest_cost",
-    "growth",
-    "job_creation",
-    "unemployment",
-    "inflation",
-
-    "population",
-    "gdp_per_capita",
-    "debt_gdp",
-    "deficit_gdp",
-    "median_wage"
   ];
 
   function getEl(selector) {
@@ -324,34 +316,50 @@
   function getComputedValue(row, key) {
     if (!row || !key) return 0;
 
+    if (key === "__interest_from_fiscal__") {
+      const year = yearKey(row);
+      const fiscalRow = FISCAL_ROWS.find((r) => yearKey(r) === year);
+      let value = toNumber(fiscalRow?.interest_cost, null);
+
+      if (value === null || !Number.isFinite(value)) return 0;
+
+      // Safety guard: if old cached data accidentally has debt × rate instead of debt × rate%,
+      // shrink it back into a realistic range.
+      if (value > 5000) value = value / 100;
+
+      return value;
+    }
+
     if (key === "__gdp_per_capita__") {
       const gdp = toNumber(row.real_gdp ?? row.gdp ?? row.nominal_gdp, null);
-      const population = toNumber(row.population, null);
+      const populationRaw = toNumber(row.population, null);
 
-      if (gdp !== null && population !== null && population > 0) {
-        return (gdp / population) * 1000;
+      if (gdp !== null && populationRaw !== null && populationRaw > 0) {
+        if (populationRaw > 10000) {
+          return (gdp * 1000000000) / populationRaw;
+        }
+
+        return (gdp / populationRaw) * 1000;
       }
 
       return 0;
     }
 
+    if (key === "population") {
+      const populationRaw = toNumber(row.population, null);
+
+      if (populationRaw === null || !Number.isFinite(populationRaw)) return 0;
+
+      if (populationRaw > 10000) {
+        return populationRaw / 1000000;
+      }
+
+      return populationRaw;
+    }
+
     if (key === "other_mandatory_cost") {
       const direct = toNumber(row.other_mandatory_cost, null);
-
-      if (direct !== null && Number.isFinite(direct) && direct > 0) {
-        return direct;
-      }
-
-      const pct = toNumber(row.other_pct_gdp, null);
-      const gdp = toNumber(row.real_gdp ?? row.gdp ?? row.nominal_gdp, null);
-
-      if (pct !== null && Number.isFinite(pct) && gdp !== null && Number.isFinite(gdp)) {
-        const rawPct = cleanCell(row.other_pct_gdp);
-        const pctDecimal = rawPct.includes("%") || Math.abs(pct) > 1 ? pct / 100 : pct;
-        return gdp * pctDecimal;
-      }
-
-      return 0;
+      return direct !== null && Number.isFinite(direct) ? direct : 0;
     }
 
     const direct = toNumber(row[key], null);
@@ -400,18 +408,21 @@
   function formatValue(value, stat = {}) {
     if (value === null || value === undefined || Number.isNaN(value)) return "—";
 
-    const abs = Math.abs(value);
-    let body;
-
     if (stat.id === "population") {
-      body = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-      return `${body}${stat.suffix || ""}`;
+      return `${value.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}${stat.suffix || ""}`;
     }
 
     if (stat.id === "gdp_per_capita") {
-      body = value.toLocaleString(undefined, { maximumFractionDigits: 0 });
-      return `${stat.prefix || ""}${body}`;
+      return `${stat.prefix || ""}${value.toLocaleString(undefined, {
+        maximumFractionDigits: 0
+      })}`;
     }
+
+    const abs = Math.abs(value);
+    let body;
 
     if (stat.prefix === "$" && abs >= 1_000_000_000_000) {
       body = `${(value / 1_000_000_000_000).toFixed(2)}T`;
@@ -446,7 +457,10 @@
 
   async function safeFetch(sheetName) {
     try {
-      if (!fetchSheets) throw new Error("APRP.fetchSheets missing. Check sheets.js loads before economy.js.");
+      if (!fetchSheets) {
+        throw new Error("APRP.fetchSheets missing. Check sheets.js loads before economy.js.");
+      }
+
       const data = await fetchSheets([sheetName], { bustCache: true });
       return data?.[sheetName] || [];
     } catch (error) {
@@ -559,6 +573,17 @@
       DISCRETIONARY_ROWS,
       MANDATORY_ROWS
     );
+
+    console.log("Loaded economy rows:", {
+      ECON_ROWS,
+      MONTHLY_ROWS,
+      MACRO_ROWS,
+      FISCAL_ROWS,
+      REVENUE_ROWS,
+      DISCRETIONARY_ROWS,
+      MANDATORY_ROWS,
+      DASHBOARD_ROWS
+    });
   }
 
   function yearlyPoints(stat) {
@@ -609,14 +634,36 @@
     style.id = "aprp-economy-omb-style";
     style.textContent = `
       body {
+        margin: 0;
         background:
           radial-gradient(circle at top left, rgba(15,23,42,.10), transparent 34%),
           radial-gradient(circle at top right, rgba(30,64,175,.10), transparent 30%),
           #eee8dc;
+        color: #07111f;
       }
 
-      .econ-clean-page { display: grid; gap: 16px; }
-      .econ-section { display: grid; gap: 10px; }
+      .container-wide {
+        width: min(1540px, calc(100% - 44px));
+        margin: 0 auto;
+      }
+
+      .section {
+        padding: 24px 0;
+      }
+
+      .section-tight {
+        padding-top: 22px;
+      }
+
+      .econ-clean-page {
+        display: grid;
+        gap: 16px;
+      }
+
+      .econ-section {
+        display: grid;
+        gap: 10px;
+      }
 
       .econ-heading {
         display: flex;
@@ -629,15 +676,16 @@
         margin: 2px 0;
         font-family: Georgia, serif;
         color: #07111f;
-        font-size: clamp(1.55rem, 2.4vw, 2.35rem);
+        font-size: clamp(1.55rem, 2.4vw, 2.75rem);
         line-height: .95;
       }
 
       .econ-heading p {
         margin: 0;
         color: #475569;
-        max-width: 720px;
+        max-width: 760px;
         font-size: .92rem;
+        line-height: 1.45;
       }
 
       .econ-eyebrow {
@@ -677,8 +725,13 @@
         font-family: Georgia, serif;
       }
 
-      .econ-panel.dark h3 { color: #fff; }
-      .econ-panel.dark .econ-eyebrow { color: #93c5fd; }
+      .econ-panel.dark h3 {
+        color: #fff;
+      }
+
+      .econ-panel.dark .econ-eyebrow {
+        color: #93c5fd;
+      }
 
       .econ-note {
         color: #64748b;
@@ -686,7 +739,9 @@
         line-height: 1.35;
       }
 
-      .econ-panel.dark .econ-note { color: #cbd5e1; }
+      .econ-panel.dark .econ-note {
+        color: #cbd5e1;
+      }
 
       .econ-tile-grid {
         display: grid;
@@ -728,7 +783,10 @@
         font-weight: 850;
       }
 
-      .econ-movement-list { display: grid; gap: 7px; }
+      .econ-movement-list {
+        display: grid;
+        gap: 7px;
+      }
 
       .econ-movement-row {
         display: grid;
@@ -763,8 +821,15 @@
         white-space: nowrap;
       }
 
-      .econ-pill.up { background: rgba(22,101,52,.28); border-color: rgba(34,197,94,.35); }
-      .econ-pill.down { background: rgba(153,27,27,.30); border-color: rgba(248,113,113,.35); }
+      .econ-pill.up {
+        background: rgba(22,101,52,.28);
+        border-color: rgba(34,197,94,.35);
+      }
+
+      .econ-pill.down {
+        background: rgba(153,27,27,.30);
+        border-color: rgba(248,113,113,.35);
+      }
 
       .econ-filter-bar {
         display: flex;
@@ -838,7 +903,9 @@
         stroke-linejoin: round;
       }
 
-      .econ-chart-area { fill: rgba(30,64,175,.13); }
+      .econ-chart-area {
+        fill: rgba(30,64,175,.13);
+      }
 
       .econ-chart-dot {
         fill: #1d4ed8;
@@ -1002,7 +1069,9 @@
         backdrop-filter: blur(8px);
       }
 
-      .econ-pie-modal.is-open { display: grid; }
+      .econ-pie-modal.is-open {
+        display: grid;
+      }
 
       .econ-pie-modal-card {
         width: min(980px, 96vw);
@@ -1083,7 +1152,13 @@
       }
 
       @media (max-width: 700px) {
-        .econ-heading { display: grid; }
+        .container-wide {
+          width: min(100% - 22px, 1540px);
+        }
+
+        .econ-heading {
+          display: grid;
+        }
 
         .econ-tile-grid,
         .econ-chart-footer {
@@ -1118,7 +1193,9 @@
   }
 
   function svgLineChart(points, stat) {
-    if (!points.length) return `<div class="econ-empty">No data for ${safeHTML(stat.title)}.</div>`;
+    if (!points.length) {
+      return `<div class="econ-empty">No data for ${safeHTML(stat.title)}.</div>`;
+    }
 
     const width = 520;
     const height = 128;
@@ -1319,6 +1396,7 @@
       card.addEventListener("click", () => {
         const modal = document.getElementById(card.dataset.pieModal);
         if (!modal) return;
+
         modal.classList.add("is-open");
         modal.setAttribute("aria-hidden", "false");
       });
@@ -1327,8 +1405,10 @@
     document.querySelectorAll("[data-pie-close]").forEach((button) => {
       button.addEventListener("click", (event) => {
         event.stopPropagation();
+
         const modal = button.closest(".econ-pie-modal");
         if (!modal) return;
+
         modal.classList.remove("is-open");
         modal.setAttribute("aria-hidden", "true");
       });
@@ -1337,6 +1417,7 @@
     document.querySelectorAll(".econ-pie-modal").forEach((modal) => {
       modal.addEventListener("click", (event) => {
         if (event.target !== modal) return;
+
         modal.classList.remove("is-open");
         modal.setAttribute("aria-hidden", "true");
       });
@@ -1661,14 +1742,14 @@
               <div>
                 <div class="econ-eyebrow">Current Fiscal Year Breakdown</div>
                 <h2>Budget Composition</h2>
-                <p>Click any circle chart to enlarge. Uses the latest active fiscal-year rows from the revenue, discretionary, and mandatory engines.</p>
+                <p>Click any circle chart to enlarge. Revenue includes UCare revenue; mandatory includes UCare spending and interest on debt.</p>
               </div>
             </div>
 
             <div class="econ-pie-grid">
               ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS, "revenue-pie-modal")}
               ${pieCard("Discretionary Spending", "Departments, agencies, and event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
-              ${pieCard("Mandatory Spending", "Entitlements, interest, obligations, and other costs", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
+              ${pieCard("Mandatory Spending", "Entitlements, UCare, interest, obligations, and other costs", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
             </div>
 
             ${pieModal("revenue-pie-modal", "Revenue Breakdown", latestRevenue, PIE_REVENUE_FIELDS)}
@@ -1681,7 +1762,7 @@
               <div>
                 <div class="econ-eyebrow">Yearly Charts</div>
                 <h2>Economic Trends</h2>
-                <p>Yearly indicators filtered to the current active year, including macro, fiscal, revenue, spending, and population records.</p>
+                <p>Yearly indicators filtered to the current active year.</p>
               </div>
               <div class="econ-filter-bar" id="econ-yearly-filters"></div>
             </div>
@@ -1708,7 +1789,7 @@
               <div>
                 <div class="econ-eyebrow">Revenue Engine</div>
                 <h2>Revenue Breakdown</h2>
-                <p>Tracks income, corporate, payroll, capital gains, excise, UCare, event revenue, and total revenue.</p>
+                <p>Tracks income, corporate, payroll, UCare revenue, capital gains, excise, event revenue, and total revenue.</p>
               </div>
               <div class="econ-filter-bar" id="econ-revenue-filters"></div>
             </div>
@@ -1732,7 +1813,7 @@
               <div>
                 <div class="econ-eyebrow">Mandatory Spending</div>
                 <h2>Entitlement & Obligation Breakdown</h2>
-                <p>Tracks Social Security, Medicare, Medicaid, SNAP, FCWA, retirement, SSI, interest on debt, other mandatory cost, and total mandatory spending.</p>
+                <p>Tracks Social Security, Medicare, Medicaid, UCare spending, SNAP, FCWA, retirement, SSI, interest on debt, other mandatory cost, and total mandatory spending.</p>
               </div>
               <div class="econ-filter-bar" id="econ-mandatory-filters"></div>
             </div>
@@ -1768,7 +1849,7 @@
 
     const revenueFilters = getEl("#econ-revenue-filters");
     if (revenueFilters) {
-      ["All", "Income", "Corporate", "Payroll", "Capital Gains", "Other", "Totals"].forEach((group, index) => {
+      ["All", "Income", "Corporate", "Payroll", "UCare", "Capital Gains", "Other", "Totals"].forEach((group, index) => {
         addFilterButton(revenueFilters, group, index === 0, renderRevenueCharts);
       });
     }
@@ -1813,7 +1894,9 @@
     const discretionary = getValue(latestSpending, ["total_discretionary_spending"]);
     const mandatory = getValue(latestMandatory, ["total_mandatory_spending"]);
     const totalSpending = getValue(latest, ["total_spending"]);
-    const interest = getValue(latest, ["interest_cost"]);
+    const interest = getValue(latest, ["__interest_from_fiscal__"]);
+    const ucareRevenue = getValue(latestRevenue, ["ucare_revenue"]);
+    const ucareCost = getValue(latestMandatory, ["ucare_cost"]);
 
     heroCard.innerHTML = `
       <div class="eyebrow">OBM Record</div>
@@ -1824,7 +1907,9 @@
         Discretionary: ${safeHTML(formatValue(discretionary, { prefix: "$" }))} •
         Mandatory: ${safeHTML(formatValue(mandatory, { prefix: "$" }))} •
         Total Spending: ${safeHTML(formatValue(totalSpending, { prefix: "$" }))} •
-        Interest: ${safeHTML(formatValue(interest, { prefix: "$" }))}
+        Interest: ${safeHTML(formatValue(interest, { prefix: "$" }))} •
+        UCare Revenue: ${safeHTML(formatValue(ucareRevenue, { prefix: "$" }))} •
+        UCare Cost: ${safeHTML(formatValue(ucareCost, { prefix: "$" }))}
       </p>
     `;
   }
