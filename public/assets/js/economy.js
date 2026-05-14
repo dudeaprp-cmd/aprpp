@@ -7,6 +7,8 @@
    - Adds yearly revenue, discretionary spending, and mandatory spending chart breakdowns.
    - Adds current fiscal year donut / circle charts for revenue, discretionary spending, and mandatory spending.
    - Donut charts are small cards and clickable to enlarge in a modal.
+   - Discretionary donut includes event_direct_cost as Other Event Direct Cost.
+   - Mandatory donut includes other_mandatory_cost as Other Mandatory.
 */
 
 (function () {
@@ -82,8 +84,10 @@
     { id: "epa", title: "Environmental Protection", keys: ["environmental_protection_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
     { id: "nasa", title: "NASA", keys: ["nasa_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
     { id: "sba", title: "SBA", keys: ["sba_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
-    { id: "other", title: "Other Agencies", keys: ["other_agencies_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
-    { id: "general_government", title: "General Government", keys: ["general_government_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
+    { id: "other", title: "Other Agencies", keys: ["other_agencies_spending"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "general_government", title: "General Government", keys: ["general_government_spending"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "event_direct_cost", title: "Other Event Direct Cost", keys: ["event_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "event_cost_from_pct_gdp", title: "Other Event GDP Cost", keys: ["event_cost_from_pct_gdp"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "total_discretionary", title: "Total Discretionary", keys: ["total_discretionary_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "discretionary_gdp", title: "Discretionary % GDP", keys: ["discretionary_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
@@ -117,6 +121,8 @@
     { id: "cap_long", title: "Long-Term Capital Gains", keys: ["cap_gains_long_term_revenue"], prefix: "$", group: "Capital Gains", changeType: "absolute" },
     { id: "excise", title: "Excise Tax", keys: ["excise_tax_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "ucare", title: "UCare Revenue", keys: ["ucare_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "event_revenue", title: "Event Revenue Impact", keys: ["event_revenue_impact"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "direct_revenue", title: "Direct Revenue", keys: ["direct_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "total_revenue", title: "Total Revenue", keys: ["total_revenue"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "revenue_gdp", title: "Revenue % GDP", keys: ["revenue_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
@@ -131,6 +137,8 @@
     { id: "civilian_retirement", title: "Federal Civilian Retirement", keys: ["fed_civilian_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "military_retirement", title: "Federal Military Retirement", keys: ["fed_military_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "ssi", title: "SSI", keys: ["ssi_cost"], prefix: "$", group: "Income Support", changeType: "absolute" },
+    { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "mandatory_direct", title: "Other Mandatory Direct Cost", keys: ["mandatory_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "total_mandatory", title: "Total Mandatory", keys: ["total_mandatory_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "mandatory_gdp", title: "Mandatory % GDP", keys: ["mandatory_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
@@ -186,8 +194,8 @@
     ["sba_spending", "SBA"],
     ["other_agencies_spending", "Other Agencies"],
     ["general_government_spending", "General Government"],
-    ["event_direct_cost", "Event Direct Cost"],
-    ["event_cost_from_pct_gdp", "Event Cost From GDP"]
+    ["event_direct_cost", "Other Event Direct Cost"],
+    ["event_cost_from_pct_gdp", "Other Event GDP Cost"]
   ];
 
   const PIE_MANDATORY_FIELDS = [
@@ -200,7 +208,8 @@
     ["fed_civilian_retirement_cost", "Civilian Retirement"],
     ["fed_military_retirement_cost", "Military Retirement"],
     ["ssi_cost", "SSI"],
-    ["mandatory_direct_cost", "Mandatory Direct Cost"]
+    ["other_mandatory_cost", "Other Mandatory"],
+    ["mandatory_direct_cost", "Other Mandatory Direct Cost"]
   ];
 
   const PIE_COLORS = [
@@ -1099,10 +1108,7 @@
       const color = PIE_COLORS[index % PIE_COLORS.length];
 
       return `
-        <path
-          d="${pieSlicePath(cx, cy, rOuter, rInner, start, end)}"
-          fill="${color}"
-        >
+        <path d="${pieSlicePath(cx, cy, rOuter, rInner, start, end)}" fill="${color}">
           <title>${safeHTML(item.label)}: ${safeHTML(formatValue(item.value, { prefix: "$" }))}</title>
         </path>
       `;
@@ -1531,8 +1537,8 @@
 
             <div class="econ-pie-grid">
               ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS, "revenue-pie-modal")}
-              ${pieCard("Discretionary Spending", "Department and agency appropriations", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
-              ${pieCard("Mandatory Spending", "Entitlements and obligations", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
+              ${pieCard("Discretionary Spending", "Department, agency, and other event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
+              ${pieCard("Mandatory Spending", "Entitlements, obligations, and other mandatory costs", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
             </div>
 
             ${pieModal("revenue-pie-modal", "Revenue Breakdown", latestRevenue, PIE_REVENUE_FIELDS)}
@@ -1572,7 +1578,7 @@
               <div>
                 <div class="econ-eyebrow">Revenue Engine</div>
                 <h2>Revenue Breakdown</h2>
-                <p>Tracks income, corporate, payroll, capital gains, excise, UCare, and total revenue.</p>
+                <p>Tracks income, corporate, payroll, capital gains, excise, UCare, event revenue, and total revenue.</p>
               </div>
               <div class="econ-filter-bar" id="econ-revenue-filters"></div>
             </div>
@@ -1584,7 +1590,7 @@
               <div>
                 <div class="econ-eyebrow">Discretionary Spending</div>
                 <h2>Department Spending Breakdown</h2>
-                <p>Tracks department-specific spending from the yearly discretionary engine.</p>
+                <p>Tracks department spending, other agencies, general government, and event direct/GDP costs.</p>
               </div>
               <div class="econ-filter-bar" id="econ-spending-filters"></div>
             </div>
@@ -1596,7 +1602,7 @@
               <div>
                 <div class="econ-eyebrow">Mandatory Spending</div>
                 <h2>Entitlement & Obligation Breakdown</h2>
-                <p>Tracks Social Security, Medicare, Medicaid, SNAP, FCWA, retirement, SSI, and total mandatory spending.</p>
+                <p>Tracks Social Security, Medicare, Medicaid, SNAP, FCWA, retirement, SSI, other mandatory cost, and total mandatory spending.</p>
               </div>
               <div class="econ-filter-bar" id="econ-mandatory-filters"></div>
             </div>
@@ -1639,14 +1645,14 @@
 
     const spendingFilters = getEl("#econ-spending-filters");
     if (spendingFilters) {
-      ["All", "Security", "Domestic", "Agency", "Totals"].forEach((group, index) => {
+      ["All", "Security", "Domestic", "Agency", "Other", "Totals"].forEach((group, index) => {
         addFilterButton(spendingFilters, group, index === 0, renderSpendingCharts);
       });
     }
 
     const mandatoryFilters = getEl("#econ-mandatory-filters");
     if (mandatoryFilters) {
-      ["All", "Core Entitlements", "Income Support", "Health", "Worker Benefits", "Retirement", "Totals"].forEach((group, index) => {
+      ["All", "Core Entitlements", "Income Support", "Health", "Worker Benefits", "Retirement", "Other", "Totals"].forEach((group, index) => {
         addFilterButton(mandatoryFilters, group, index === 0, renderMandatoryCharts);
       });
     }
@@ -1666,6 +1672,8 @@
     const latest = latestMacroRow();
     const latestRevenue = latestRow(REVENUE_ROWS, REVENUE_STATS);
     const latestSpending = latestRow(DISCRETIONARY_ROWS, SPENDING_STATS);
+    const latestMandatory = latestRow(MANDATORY_ROWS, MANDATORY_STATS);
+
     const year = firstValue(latest, ["year", "date"], CURRENT_YEAR ? `FY${CURRENT_YEAR}` : "Latest");
 
     const monthlyCount = MONTHLY_ROWS.length.toLocaleString();
@@ -1673,12 +1681,17 @@
 
     const revenue = getValue(latestRevenue, ["total_revenue"]);
     const discretionary = getValue(latestSpending, ["total_discretionary_spending"]);
+    const mandatory = getValue(latestMandatory, ["total_mandatory_spending"]);
 
     heroCard.innerHTML = `
       <div class="eyebrow">OBM Record</div>
       <h2>${safeHTML(year)} Economy Loaded</h2>
       <p>${safeHTML(yearlyCount)} yearly rows and ${safeHTML(monthlyCount)} monthly rows loaded through the active period.</p>
-      <p class="text-small">Revenue: ${safeHTML(formatValue(revenue, { prefix: "$" }))} • Discretionary: ${safeHTML(formatValue(discretionary, { prefix: "$" }))}</p>
+      <p class="text-small">
+        Revenue: ${safeHTML(formatValue(revenue, { prefix: "$" }))} •
+        Discretionary: ${safeHTML(formatValue(discretionary, { prefix: "$" }))} •
+        Mandatory: ${safeHTML(formatValue(mandatory, { prefix: "$" }))}
+      </p>
     `;
   }
 
