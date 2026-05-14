@@ -5,17 +5,21 @@
    - WEB_ECON
    - MONTHLY_ENGINE
    - CONTROL_CONFIG
+   - YEARLY_MACRO_ENGINE
+   - YEARLY_FISCAL_OUTPUT
    - YEARLY_REVENUE_ENGINE
    - YEARLY_DISCRETIONARY_ENGINE
    - YEARLY_MANDATORY_ENGINE
 
-   Fixes:
-   - Monthly charts read MONTHLY_ENGINE.
-   - Charts only show data up to CONTROL_CONFIG current_year/current_month.
-   - Adds revenue, discretionary, and mandatory chart sections.
-   - Adds clickable current-year donut charts.
-   - Discretionary donut includes event_direct_cost as Other Event Direct Cost.
-   - Mandatory donut includes other_mandatory_cost as Other Mandatory.
+   Key additions:
+   - Total Revenue key indicator from YEARLY_REVENUE_ENGINE.
+   - Total Spending key indicator from YEARLY_FISCAL_OUTPUT.
+   - Population key indicator from YEARLY_MACRO_ENGINE.
+   - GDP Per Capita auto-calculated from GDP billions / population millions × 1000.
+   - Raw Interest on Debt key indicator from YEARLY_FISCAL_OUTPUT interest_cost.
+   - Mandatory spending donut includes interest_cost as Interest on Debt.
+   - Mandatory spending donut includes other_mandatory_cost as Other Mandatory.
+   - Discretionary spending donut includes event_direct_cost as Other Event Direct Cost.
 */
 
 (function () {
@@ -51,9 +55,12 @@
   let ECON_ROWS = [];
   let MONTHLY_ROWS = [];
   let CONTROL_ROWS = [];
+  let MACRO_ROWS = [];
+  let FISCAL_ROWS = [];
   let REVENUE_ROWS = [];
   let DISCRETIONARY_ROWS = [];
   let MANDATORY_ROWS = [];
+  let DASHBOARD_ROWS = [];
 
   let MONTHLY_RANGE = "all";
   let CURRENT_YEAR = null;
@@ -69,7 +76,13 @@
     { id: "debt_gdp", title: "Debt-to-GDP", keys: ["debt_to_gdp", "debt_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
     { id: "deficit_gdp", title: "Deficit-to-GDP", keys: ["deficit_gdp", "deficit_to_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
     { id: "inflation", title: "Inflation", keys: ["inflation", "inflation_rate"], suffix: "%", group: "Prices", changeType: "pp" },
-    { id: "median_wage", title: "Median Wage", keys: ["median_wage", "final_median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" }
+    { id: "median_wage", title: "Median Wage", keys: ["median_wage", "final_median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" },
+
+    { id: "total_revenue", title: "Total Revenue", keys: ["total_revenue"], prefix: "$", group: "Fiscal", changeType: "absolute" },
+    { id: "total_spending", title: "Total Spending", keys: ["total_spending"], prefix: "$", group: "Fiscal", changeType: "absolute" },
+    { id: "interest_cost", title: "Interest on Debt", keys: ["interest_cost"], prefix: "$", group: "Fiscal", changeType: "absolute" },
+    { id: "population", title: "Population", keys: ["population"], suffix: "M", group: "Population", changeType: "absolute" },
+    { id: "gdp_per_capita", title: "GDP Per Capita", keys: ["__gdp_per_capita__"], prefix: "$", group: "Population", changeType: "absolute" }
   ];
 
   const MONTHLY_STATS = [
@@ -154,6 +167,7 @@
     { id: "civilian_retirement", title: "Federal Civilian Retirement", keys: ["fed_civilian_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "military_retirement", title: "Federal Military Retirement", keys: ["fed_military_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "ssi", title: "SSI", keys: ["ssi_cost"], prefix: "$", group: "Income Support", changeType: "absolute" },
+    { id: "interest_cost", title: "Interest on Debt", keys: ["interest_cost"], prefix: "$", group: "Debt Service", changeType: "absolute" },
     { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "mandatory_direct", title: "Other Mandatory Direct Cost", keys: ["mandatory_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
 
@@ -226,6 +240,7 @@
     ["fed_civilian_retirement_cost", "Civilian Retirement"],
     ["fed_military_retirement_cost", "Military Retirement"],
     ["ssi_cost", "SSI"],
+    ["interest_cost", "Interest on Debt"],
     ["other_mandatory_cost", "Other Mandatory"],
     ["mandatory_direct_cost", "Other Mandatory Direct Cost"]
   ];
@@ -242,13 +257,18 @@
   const TOP_YEARLY_TILES = [
     "gdp",
     "debt",
+    "total_revenue",
+    "total_spending",
+    "deficit",
+    "interest_cost",
     "growth",
     "job_creation",
-    "deficit",
     "unemployment",
+    "inflation",
+    "population",
+    "gdp_per_capita",
     "debt_gdp",
     "deficit_gdp",
-    "inflation",
     "median_wage"
   ];
 
@@ -265,8 +285,45 @@
     return fallback;
   }
 
+  function yearKey(row) {
+    const raw = firstValue(row, ["year", "fiscal_year", "date"], "");
+    const match = String(raw).match(/\d{4}/);
+    return match ? match[0] : "";
+  }
+
+  function mergeRowsByYear(baseRows, ...extraGroups) {
+    const map = new Map();
+
+    for (const row of baseRows || []) {
+      const key = yearKey(row);
+      if (!key) continue;
+      map.set(key, { ...row });
+    }
+
+    for (const group of extraGroups) {
+      for (const row of group || []) {
+        const key = yearKey(row);
+        if (!key) continue;
+        map.set(key, { ...(map.get(key) || {}), ...row });
+      }
+    }
+
+    return [...map.values()].sort((a, b) => toNumber(yearKey(a), 0) - toNumber(yearKey(b), 0));
+  }
+
   function getComputedValue(row, key) {
     if (!row || !key) return 0;
+
+    if (key === "__gdp_per_capita__") {
+      const gdp = toNumber(row.real_gdp ?? row.gdp ?? row.nominal_gdp, null);
+      const population = toNumber(row.population, null);
+
+      if (gdp !== null && population !== null && population > 0) {
+        return (gdp / population) * 1000;
+      }
+
+      return 0;
+    }
 
     if (key === "other_mandatory_cost") {
       const direct = toNumber(row.other_mandatory_cost, null);
@@ -296,7 +353,7 @@
       const value = getComputedValue(row, key);
 
       if (value !== null && value !== undefined && Number.isFinite(value)) {
-        if (value !== 0 || cleanCell(row?.[key]) !== "") {
+        if (value !== 0 || key.startsWith("__") || cleanCell(row?.[key]) !== "") {
           return value;
         }
       }
@@ -335,6 +392,16 @@
 
     const abs = Math.abs(value);
     let body;
+
+    if (stat.id === "population") {
+      body = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      return `${body}${stat.suffix || ""}`;
+    }
+
+    if (stat.id === "gdp_per_capita") {
+      body = value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+      return `${stat.prefix || ""}${body}`;
+    }
 
     if (stat.prefix === "$" && abs >= 1_000_000_000_000) {
       body = `${(value / 1_000_000_000_000).toFixed(2)}T`;
@@ -429,10 +496,21 @@
   }
 
   async function loadData() {
-    const [econ, monthly, control, revenue, discretionary, mandatory] = await Promise.all([
+    const [
+      econ,
+      monthly,
+      control,
+      macro,
+      fiscal,
+      revenue,
+      discretionary,
+      mandatory
+    ] = await Promise.all([
       safeFetch("WEB_ECON"),
       safeFetch("MONTHLY_ENGINE"),
       safeFetch("CONTROL_CONFIG"),
+      safeFetch("YEARLY_MACRO_ENGINE"),
+      safeFetch("YEARLY_FISCAL_OUTPUT"),
       safeFetch("YEARLY_REVENUE_ENGINE"),
       safeFetch("YEARLY_DISCRETIONARY_ENGINE"),
       safeFetch("YEARLY_MANDATORY_ENGINE")
@@ -443,6 +521,8 @@
     resolveCurrentPeriod([
       ...(econ || []),
       ...(monthly || []),
+      ...(macro || []),
+      ...(fiscal || []),
       ...(revenue || []),
       ...(discretionary || []),
       ...(mandatory || [])
@@ -450,13 +530,29 @@
 
     ECON_ROWS = filterRowsToCurrentPeriod(econ || []);
     MONTHLY_ROWS = filterRowsToCurrentPeriod(monthly || []);
+    MACRO_ROWS = filterRowsToCurrentPeriod(macro || []);
+    FISCAL_ROWS = filterRowsToCurrentPeriod(fiscal || []);
     REVENUE_ROWS = filterRowsToCurrentPeriod(revenue || []);
     DISCRETIONARY_ROWS = filterRowsToCurrentPeriod(discretionary || []);
-    MANDATORY_ROWS = filterRowsToCurrentPeriod(mandatory || []);
+
+    MANDATORY_ROWS = mergeRowsByYear(
+      filterRowsToCurrentPeriod(mandatory || []),
+      FISCAL_ROWS,
+      MACRO_ROWS
+    );
+
+    DASHBOARD_ROWS = mergeRowsByYear(
+      ECON_ROWS,
+      MACRO_ROWS,
+      FISCAL_ROWS,
+      REVENUE_ROWS,
+      DISCRETIONARY_ROWS,
+      MANDATORY_ROWS
+    );
   }
 
   function yearlyPoints(stat) {
-    return ECON_ROWS.map((row, index) => {
+    return DASHBOARD_ROWS.map((row, index) => {
       const value = getValue(row, stat.keys);
       if (value === null) return null;
       return { label: yearLabel(row, index), value, row };
@@ -482,12 +578,12 @@
   }
 
   function latestMacroRow() {
-    const valid = ECON_ROWS.filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null));
+    const valid = DASHBOARD_ROWS.filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null));
     return valid[valid.length - 1] || {};
   }
 
   function previousMacroRow() {
-    const valid = ECON_ROWS.filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null));
+    const valid = DASHBOARD_ROWS.filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null));
     return valid[valid.length - 2] || {};
   }
 
@@ -956,7 +1052,7 @@
         }
 
         .econ-tile-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
       }
 
@@ -1447,7 +1543,7 @@
   }
 
   function renderRecords() {
-    const rows = [...ECON_ROWS]
+    const rows = [...DASHBOARD_ROWS]
       .filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null))
       .slice(-10)
       .reverse();
@@ -1503,9 +1599,6 @@
     const latestRevenue = latestRow(REVENUE_ROWS, REVENUE_STATS);
     const latestDiscretionary = latestRow(DISCRETIONARY_ROWS, SPENDING_STATS);
     const latestMandatory = latestRow(MANDATORY_ROWS, MANDATORY_STATS);
-
-    console.log("Latest mandatory row:", latestMandatory);
-    console.log("other_mandatory_cost:", getComputedValue(latestMandatory, "other_mandatory_cost"));
 
     const year = firstValue(latest, ["year", "date"], CURRENT_YEAR ? `FY${CURRENT_YEAR}` : "Latest Year");
 
@@ -1563,7 +1656,7 @@
             <div class="econ-pie-grid">
               ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS, "revenue-pie-modal")}
               ${pieCard("Discretionary Spending", "Departments, agencies, and event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
-              ${pieCard("Mandatory Spending", "Entitlements, obligations, and other mandatory costs", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
+              ${pieCard("Mandatory Spending", "Entitlements, interest, obligations, and other costs", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
             </div>
 
             ${pieModal("revenue-pie-modal", "Revenue Breakdown", latestRevenue, PIE_REVENUE_FIELDS)}
@@ -1576,7 +1669,7 @@
               <div>
                 <div class="econ-eyebrow">Yearly Charts</div>
                 <h2>Economic Trends</h2>
-                <p>WEB_ECON yearly indicators filtered to the current active year.</p>
+                <p>Yearly indicators filtered to the current active year, including macro, fiscal, revenue, spending, and population records.</p>
               </div>
               <div class="econ-filter-bar" id="econ-yearly-filters"></div>
             </div>
@@ -1627,7 +1720,7 @@
               <div>
                 <div class="econ-eyebrow">Mandatory Spending</div>
                 <h2>Entitlement & Obligation Breakdown</h2>
-                <p>Tracks Social Security, Medicare, Medicaid, SNAP, FCWA, retirement, SSI, other mandatory cost, and total mandatory spending.</p>
+                <p>Tracks Social Security, Medicare, Medicaid, SNAP, FCWA, retirement, SSI, interest on debt, other mandatory cost, and total mandatory spending.</p>
               </div>
               <div class="econ-filter-bar" id="econ-mandatory-filters"></div>
             </div>
@@ -1643,7 +1736,7 @@
 
     const yearlyFilters = getEl("#econ-yearly-filters");
     if (yearlyFilters) {
-      ["All", "Output", "Fiscal", "Labor", "Prices"].forEach((group, index) => {
+      ["All", "Output", "Fiscal", "Labor", "Prices", "Population"].forEach((group, index) => {
         addFilterButton(yearlyFilters, group, index === 0, renderYearlyCharts);
       });
     }
@@ -1677,7 +1770,7 @@
 
     const mandatoryFilters = getEl("#econ-mandatory-filters");
     if (mandatoryFilters) {
-      ["All", "Core Entitlements", "Income Support", "Health", "Worker Benefits", "Retirement", "Other", "Totals"].forEach((group, index) => {
+      ["All", "Core Entitlements", "Income Support", "Health", "Worker Benefits", "Retirement", "Debt Service", "Other", "Totals"].forEach((group, index) => {
         addFilterButton(mandatoryFilters, group, index === 0, renderMandatoryCharts);
       });
     }
@@ -1702,11 +1795,13 @@
     const year = firstValue(latest, ["year", "date"], CURRENT_YEAR ? `FY${CURRENT_YEAR}` : "Latest");
 
     const monthlyCount = MONTHLY_ROWS.length.toLocaleString();
-    const yearlyCount = ECON_ROWS.length.toLocaleString();
+    const yearlyCount = DASHBOARD_ROWS.length.toLocaleString();
 
     const revenue = getValue(latestRevenue, ["total_revenue"]);
     const discretionary = getValue(latestSpending, ["total_discretionary_spending"]);
     const mandatory = getValue(latestMandatory, ["total_mandatory_spending"]);
+    const totalSpending = getValue(latest, ["total_spending"]);
+    const interest = getValue(latest, ["interest_cost"]);
 
     heroCard.innerHTML = `
       <div class="eyebrow">OBM Record</div>
@@ -1715,7 +1810,9 @@
       <p class="text-small">
         Revenue: ${safeHTML(formatValue(revenue, { prefix: "$" }))} •
         Discretionary: ${safeHTML(formatValue(discretionary, { prefix: "$" }))} •
-        Mandatory: ${safeHTML(formatValue(mandatory, { prefix: "$" }))}
+        Mandatory: ${safeHTML(formatValue(mandatory, { prefix: "$" }))} •
+        Total Spending: ${safeHTML(formatValue(totalSpending, { prefix: "$" }))} •
+        Interest: ${safeHTML(formatValue(interest, { prefix: "$" }))}
       </p>
     `;
   }
