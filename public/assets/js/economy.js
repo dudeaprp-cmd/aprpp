@@ -10,12 +10,12 @@
    - YEARLY_MANDATORY_ENGINE
 
    Fixes:
-   - Budget charts only show through current configured year/month.
-   - Discretionary donut includes event direct cost as Other Event Direct Cost.
-   - Mandatory donut includes Other Mandatory from:
-     1. other_mandatory_cost
-     2. other_mandatory
-     3. other_pct_gdp × real_gdp
+   - Monthly charts read MONTHLY_ENGINE.
+   - Charts only show data up to CONTROL_CONFIG current_year/current_month.
+   - Adds revenue, discretionary, and mandatory chart sections.
+   - Adds clickable current-year donut charts.
+   - Discretionary donut includes event_direct_cost as Other Event Direct Cost.
+   - Mandatory donut includes other_mandatory_cost as Other Mandatory.
 */
 
 (function () {
@@ -47,8 +47,6 @@
 
     return Number.isFinite(parsed) ? parsed : fallback;
   };
-
-  const rawHasPercent = (value) => String(value ?? "").includes("%");
 
   let ECON_ROWS = [];
   let MONTHLY_ROWS = [];
@@ -113,6 +111,7 @@
     { id: "ucare", title: "UCare Revenue", keys: ["ucare_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "event_revenue", title: "Event Revenue Impact", keys: ["event_revenue_impact"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "direct_revenue", title: "Direct Revenue", keys: ["direct_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
+
     { id: "total_revenue", title: "Total Revenue", keys: ["total_revenue"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "revenue_gdp", title: "Revenue % GDP", keys: ["revenue_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
@@ -138,8 +137,9 @@
     { id: "sba", title: "SBA", keys: ["sba_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
     { id: "other", title: "Other Agencies", keys: ["other_agencies_spending"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "general_government", title: "General Government", keys: ["general_government_spending"], prefix: "$", group: "Other", changeType: "absolute" },
-    { id: "event_direct_cost", title: "Other Event Direct Cost", keys: ["event_direct_cost", "event_direct_cost_amount"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "event_direct_cost", title: "Other Event Direct Cost", keys: ["event_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "event_cost_from_pct_gdp", title: "Other Event GDP Cost", keys: ["event_cost_from_pct_gdp"], prefix: "$", group: "Other", changeType: "absolute" },
+
     { id: "total_discretionary", title: "Total Discretionary", keys: ["total_discretionary_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "discretionary_gdp", title: "Discretionary % GDP", keys: ["discretionary_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
@@ -154,8 +154,9 @@
     { id: "civilian_retirement", title: "Federal Civilian Retirement", keys: ["fed_civilian_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "military_retirement", title: "Federal Military Retirement", keys: ["fed_military_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "ssi", title: "SSI", keys: ["ssi_cost"], prefix: "$", group: "Income Support", changeType: "absolute" },
-    { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost", "other_mandatory", "other_pct_gdp"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "mandatory_direct", title: "Other Mandatory Direct Cost", keys: ["mandatory_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
+
     { id: "total_mandatory", title: "Total Mandatory", keys: ["total_mandatory_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "mandatory_gdp", title: "Mandatory % GDP", keys: ["mandatory_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
@@ -212,7 +213,6 @@
     ["other_agencies_spending", "Other Agencies"],
     ["general_government_spending", "General Government"],
     ["event_direct_cost", "Other Event Direct Cost"],
-    ["event_direct_cost_amount", "Other Event Direct Cost"],
     ["event_cost_from_pct_gdp", "Other Event GDP Cost"]
   ];
 
@@ -227,8 +227,6 @@
     ["fed_military_retirement_cost", "Military Retirement"],
     ["ssi_cost", "SSI"],
     ["other_mandatory_cost", "Other Mandatory"],
-    ["other_mandatory", "Other Mandatory"],
-    ["other_pct_gdp", "Other Mandatory"],
     ["mandatory_direct_cost", "Other Mandatory Direct Cost"]
   ];
 
@@ -258,62 +256,49 @@
     return document.querySelector(selector);
   }
 
-  function monthNumberToName(value) {
-    const n = toNumber(value, null);
-    if (!n || n < 1 || n > 12) return "";
-    return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][n - 1];
-  }
-
   function firstValue(row, keys, fallback = "") {
     for (const key of keys) {
       const value = cleanCell(row?.[key]);
       if (value !== "") return value;
     }
+
     return fallback;
   }
 
   function getComputedValue(row, key) {
-    const direct = toNumber(row?.[key], null);
+    if (!row || !key) return 0;
 
-    if (direct !== null && Number.isFinite(direct)) {
-      if (key === "other_pct_gdp") {
-        const gdp = toNumber(row?.real_gdp ?? row?.gdp ?? row?.nominal_gdp, null);
-        if (gdp === null) return 0;
+    if (key === "other_mandatory_cost") {
+      const direct = toNumber(row.other_mandatory_cost, null);
 
-        const pctDecimal = rawHasPercent(row?.other_pct_gdp) || Math.abs(direct) > 1
-          ? direct / 100
-          : direct;
+      if (direct !== null && Number.isFinite(direct) && direct > 0) {
+        return direct;
+      }
 
+      const pct = toNumber(row.other_pct_gdp, null);
+      const gdp = toNumber(row.real_gdp ?? row.gdp ?? row.nominal_gdp, null);
+
+      if (pct !== null && Number.isFinite(pct) && gdp !== null && Number.isFinite(gdp)) {
+        const rawPct = cleanCell(row.other_pct_gdp);
+        const pctDecimal = rawPct.includes("%") || Math.abs(pct) > 1 ? pct / 100 : pct;
         return gdp * pctDecimal;
       }
 
-      return direct;
+      return 0;
     }
 
-    if (key === "other_mandatory_cost" || key === "other_mandatory") {
-      const directOther = toNumber(row?.other_mandatory_cost ?? row?.other_mandatory, null);
-      if (directOther !== null && directOther > 0) return directOther;
-
-      const pct = toNumber(row?.other_pct_gdp, null);
-      const gdp = toNumber(row?.real_gdp ?? row?.gdp ?? row?.nominal_gdp, null);
-
-      if (pct !== null && gdp !== null) {
-        const pctDecimal = rawHasPercent(row?.other_pct_gdp) || Math.abs(pct) > 1
-          ? pct / 100
-          : pct;
-
-        return gdp * pctDecimal;
-      }
-    }
-
-    return 0;
+    const direct = toNumber(row[key], null);
+    return direct !== null && Number.isFinite(direct) ? direct : 0;
   }
 
   function getValue(row, keys) {
     for (const key of keys) {
       const value = getComputedValue(row, key);
+
       if (value !== null && value !== undefined && Number.isFinite(value)) {
-        if (value !== 0 || cleanCell(row?.[key]) !== "") return value;
+        if (value !== 0 || cleanCell(row?.[key]) !== "") {
+          return value;
+        }
       }
     }
 
@@ -322,6 +307,12 @@
 
   function yearLabel(row, index = 0) {
     return firstValue(row, ["label", "year", "date", "fiscal_year"], String(index + 1));
+  }
+
+  function monthNumberToName(value) {
+    const n = toNumber(value, null);
+    if (!n || n < 1 || n > 12) return "";
+    return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][n - 1];
   }
 
   function monthLabel(row, index = 0) {
@@ -345,18 +336,28 @@
     const abs = Math.abs(value);
     let body;
 
-    if (stat.prefix === "$" && abs >= 1_000_000_000_000) body = `${(value / 1_000_000_000_000).toFixed(2)}T`;
-    else if (stat.prefix === "$" && abs >= 1_000_000_000) body = `${(value / 1_000_000_000).toFixed(2)}B`;
-    else if (stat.prefix === "$" && abs >= 1_000_000) body = `${(value / 1_000_000).toFixed(2)}M`;
-    else body = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    if (stat.prefix === "$" && abs >= 1_000_000_000_000) {
+      body = `${(value / 1_000_000_000_000).toFixed(2)}T`;
+    } else if (stat.prefix === "$" && abs >= 1_000_000_000) {
+      body = `${(value / 1_000_000_000).toFixed(2)}B`;
+    } else if (stat.prefix === "$" && abs >= 1_000_000) {
+      body = `${(value / 1_000_000).toFixed(2)}M`;
+    } else {
+      body = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
 
     return `${stat.prefix || ""}${body}${stat.suffix || ""}`;
   }
 
   function formatMovement(diff, stat = {}) {
     if (diff === null || diff === undefined || Number.isNaN(diff)) return "—";
+
     const sign = diff > 0 ? "+" : "";
-    if (stat.changeType === "pp") return `${sign}${diff.toFixed(2)} pp`;
+
+    if (stat.changeType === "pp") {
+      return `${sign}${diff.toFixed(2)} pp`;
+    }
+
     return `${sign}${formatValue(diff, stat)}`;
   }
 
@@ -381,6 +382,7 @@
     if (APRP.getConfigValue) return APRP.getConfigValue(CONTROL_ROWS, key, fallback);
 
     const target = cleanCell(key).toLowerCase();
+
     const found = CONTROL_ROWS.find((row) => {
       const rowKey = cleanCell(row.key || row.setting || row.name).toLowerCase();
       return rowKey === target;
@@ -975,9 +977,7 @@
       }
 
       @media (max-width: 700px) {
-        .econ-heading {
-          display: grid;
-        }
+        .econ-heading { display: grid; }
 
         .econ-tile-grid,
         .econ-chart-footer {
@@ -1070,6 +1070,7 @@
 
   function polarToCartesian(cx, cy, r, angleDeg) {
     const angleRad = (angleDeg - 90) * Math.PI / 180;
+
     return {
       x: cx + r * Math.cos(angleRad),
       y: cy + r * Math.sin(angleRad)
@@ -1093,23 +1094,13 @@
   }
 
   function buildPieData(row, fields) {
-    const seen = new Set();
-
     return fields
       .map(([key, label]) => ({
         key,
         label,
         value: getComputedValue(row, key)
       }))
-      .filter((item) => {
-        if (item.value <= 0) return false;
-
-        const signature = `${item.label}`;
-        if (seen.has(signature)) return false;
-        seen.add(signature);
-
-        return true;
-      })
+      .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value);
   }
 
@@ -1461,7 +1452,9 @@
       .slice(-10)
       .reverse();
 
-    if (!rows.length) return `<div class="econ-panel"><p class="econ-note">No yearly records found.</p></div>`;
+    if (!rows.length) {
+      return `<div class="econ-panel"><p class="econ-note">No yearly records found.</p></div>`;
+    }
 
     const gdp = YEARLY_STATS.find((s) => s.id === "gdp");
     const debt = YEARLY_STATS.find((s) => s.id === "debt");
@@ -1510,6 +1503,9 @@
     const latestRevenue = latestRow(REVENUE_ROWS, REVENUE_STATS);
     const latestDiscretionary = latestRow(DISCRETIONARY_ROWS, SPENDING_STATS);
     const latestMandatory = latestRow(MANDATORY_ROWS, MANDATORY_STATS);
+
+    console.log("Latest mandatory row:", latestMandatory);
+    console.log("other_mandatory_cost:", getComputedValue(latestMandatory, "other_mandatory_cost"));
 
     const year = firstValue(latest, ["year", "date"], CURRENT_YEAR ? `FY${CURRENT_YEAR}` : "Latest Year");
 
