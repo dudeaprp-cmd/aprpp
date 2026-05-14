@@ -1,23 +1,31 @@
 /* APRP Federal Archive — Economy Page
    OMB-style compact dashboard.
 
-   Updates:
-   - Monthly charts read MONTHLY_ENGINE.
-   - Charts only show data up to CONTROL_CONFIG current_year/current_month.
-   - Adds yearly revenue, discretionary spending, and mandatory spending chart breakdowns.
-   - Adds current fiscal year donut / circle charts for revenue, discretionary spending, and mandatory spending.
-   - Donut charts are small cards and clickable to enlarge in a modal.
-   - Discretionary donut includes event_direct_cost as Other Event Direct Cost.
-   - Mandatory donut includes other_mandatory_cost as Other Mandatory.
+   Reads:
+   - WEB_ECON
+   - MONTHLY_ENGINE
+   - CONTROL_CONFIG
+   - YEARLY_REVENUE_ENGINE
+   - YEARLY_DISCRETIONARY_ENGINE
+   - YEARLY_MANDATORY_ENGINE
+
+   Fixes:
+   - Budget charts only show through current configured year/month.
+   - Discretionary donut includes event direct cost as Other Event Direct Cost.
+   - Mandatory donut includes Other Mandatory from:
+     1. other_mandatory_cost
+     2. other_mandatory
+     3. other_pct_gdp × real_gdp
 */
 
 (function () {
   "use strict";
 
   const APRP = window.APRP || {};
-
   const fetchSheets = APRP.fetchSheets;
+
   const cleanCell = APRP.cleanCell || ((value) => String(value ?? "").trim());
+
   const safeHTML = APRP.safeHTML || ((value) =>
     cleanCell(value)
       .replaceAll("&", "&amp;")
@@ -29,9 +37,18 @@
 
   const toNumber = (value, fallback = null) => {
     if (value === null || value === undefined || value === "") return fallback;
-    const parsed = Number(String(value).replace(/[$,%]/g, "").replace(/,/g, "").trim());
+
+    const parsed = Number(
+      String(value)
+        .replace(/[$,%]/g, "")
+        .replace(/,/g, "")
+        .trim()
+    );
+
     return Number.isFinite(parsed) ? parsed : fallback;
   };
+
+  const rawHasPercent = (value) => String(value ?? "").includes("%");
 
   let ECON_ROWS = [];
   let MONTHLY_ROWS = [];
@@ -63,33 +80,6 @@
     { id: "oil", title: "Oil Price", keys: ["oil_price", "oil", "crude_oil"], prefix: "$", group: "Markets", changeType: "absolute" },
     { id: "job_creation", title: "Job Creation", keys: ["job_creation_monthly", "job_creation", "jobs", "jobs_created", "net_jobs"], group: "Labor", changeType: "absolute" },
     { id: "stock", title: "Stock Index", keys: ["stock_market_index", "stock_market_in", "stock", "stocks", "stock_index", "market", "sp500"], group: "Markets", changeType: "absolute" }
-  ];
-
-  const SPENDING_STATS = [
-    { id: "defense", title: "Defense", keys: ["defense_spending"], prefix: "$", group: "Security", changeType: "absolute" },
-    { id: "education", title: "Education", keys: ["education_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "health_social_admin", title: "Health & Social Admin", keys: ["health_social_admin_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "transportation", title: "Transportation", keys: ["transportation_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "treasury", title: "Treasury", keys: ["treasury_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
-    { id: "veterans", title: "Veterans Affairs", keys: ["veterans_affairs_spending"], prefix: "$", group: "Security", changeType: "absolute" },
-    { id: "homeland", title: "Homeland Security", keys: ["homeland_security_spending"], prefix: "$", group: "Security", changeType: "absolute" },
-    { id: "justice", title: "Justice", keys: ["justice_spending"], prefix: "$", group: "Security", changeType: "absolute" },
-    { id: "state", title: "State / Foreign Affairs", keys: ["state_foreign_affairs_spending"], prefix: "$", group: "Security", changeType: "absolute" },
-    { id: "interior", title: "Interior / Natural Resources", keys: ["interior_natural_resources_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "agriculture", title: "Agriculture", keys: ["agriculture_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "energy", title: "Energy", keys: ["energy_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "commerce", title: "Commerce", keys: ["commerce_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
-    { id: "labor", title: "Labor", keys: ["labor_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
-    { id: "hud", title: "Housing & Urban Development", keys: ["housing_urban_development_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "epa", title: "Environmental Protection", keys: ["environmental_protection_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "nasa", title: "NASA", keys: ["nasa_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
-    { id: "sba", title: "SBA", keys: ["sba_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
-    { id: "other", title: "Other Agencies", keys: ["other_agencies_spending"], prefix: "$", group: "Other", changeType: "absolute" },
-    { id: "general_government", title: "General Government", keys: ["general_government_spending"], prefix: "$", group: "Other", changeType: "absolute" },
-    { id: "event_direct_cost", title: "Other Event Direct Cost", keys: ["event_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
-    { id: "event_cost_from_pct_gdp", title: "Other Event GDP Cost", keys: ["event_cost_from_pct_gdp"], prefix: "$", group: "Other", changeType: "absolute" },
-    { id: "total_discretionary", title: "Total Discretionary", keys: ["total_discretionary_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
-    { id: "discretionary_gdp", title: "Discretionary % GDP", keys: ["discretionary_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
 
   const REVENUE_STATS = [
@@ -127,6 +117,33 @@
     { id: "revenue_gdp", title: "Revenue % GDP", keys: ["revenue_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
 
+  const SPENDING_STATS = [
+    { id: "defense", title: "Defense", keys: ["defense_spending"], prefix: "$", group: "Security", changeType: "absolute" },
+    { id: "education", title: "Education", keys: ["education_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "health_social_admin", title: "Health & Social Admin", keys: ["health_social_admin_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "transportation", title: "Transportation", keys: ["transportation_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "treasury", title: "Treasury", keys: ["treasury_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
+    { id: "veterans", title: "Veterans Affairs", keys: ["veterans_affairs_spending"], prefix: "$", group: "Security", changeType: "absolute" },
+    { id: "homeland", title: "Homeland Security", keys: ["homeland_security_spending"], prefix: "$", group: "Security", changeType: "absolute" },
+    { id: "justice", title: "Justice", keys: ["justice_spending"], prefix: "$", group: "Security", changeType: "absolute" },
+    { id: "state", title: "State / Foreign Affairs", keys: ["state_foreign_affairs_spending"], prefix: "$", group: "Security", changeType: "absolute" },
+    { id: "interior", title: "Interior / Natural Resources", keys: ["interior_natural_resources_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "agriculture", title: "Agriculture", keys: ["agriculture_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "energy", title: "Energy", keys: ["energy_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "commerce", title: "Commerce", keys: ["commerce_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
+    { id: "labor", title: "Labor", keys: ["labor_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
+    { id: "hud", title: "Housing & Urban Development", keys: ["housing_urban_development_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "epa", title: "Environmental Protection", keys: ["environmental_protection_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "nasa", title: "NASA", keys: ["nasa_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
+    { id: "sba", title: "SBA", keys: ["sba_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
+    { id: "other", title: "Other Agencies", keys: ["other_agencies_spending"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "general_government", title: "General Government", keys: ["general_government_spending"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "event_direct_cost", title: "Other Event Direct Cost", keys: ["event_direct_cost", "event_direct_cost_amount"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "event_cost_from_pct_gdp", title: "Other Event GDP Cost", keys: ["event_cost_from_pct_gdp"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "total_discretionary", title: "Total Discretionary", keys: ["total_discretionary_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
+    { id: "discretionary_gdp", title: "Discretionary % GDP", keys: ["discretionary_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
+  ];
+
   const MANDATORY_STATS = [
     { id: "social_security", title: "Social Security", keys: ["social_security_cost"], prefix: "$", group: "Core Entitlements", changeType: "absolute" },
     { id: "medicare", title: "Medicare", keys: ["medicare_cost"], prefix: "$", group: "Core Entitlements", changeType: "absolute" },
@@ -137,7 +154,7 @@
     { id: "civilian_retirement", title: "Federal Civilian Retirement", keys: ["fed_civilian_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "military_retirement", title: "Federal Military Retirement", keys: ["fed_military_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "ssi", title: "SSI", keys: ["ssi_cost"], prefix: "$", group: "Income Support", changeType: "absolute" },
-    { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost"], prefix: "$", group: "Other", changeType: "absolute" },
+    { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost", "other_mandatory", "other_pct_gdp"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "mandatory_direct", title: "Other Mandatory Direct Cost", keys: ["mandatory_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "total_mandatory", title: "Total Mandatory", keys: ["total_mandatory_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "mandatory_gdp", title: "Mandatory % GDP", keys: ["mandatory_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
@@ -195,6 +212,7 @@
     ["other_agencies_spending", "Other Agencies"],
     ["general_government_spending", "General Government"],
     ["event_direct_cost", "Other Event Direct Cost"],
+    ["event_direct_cost_amount", "Other Event Direct Cost"],
     ["event_cost_from_pct_gdp", "Other Event GDP Cost"]
   ];
 
@@ -209,6 +227,8 @@
     ["fed_military_retirement_cost", "Military Retirement"],
     ["ssi_cost", "SSI"],
     ["other_mandatory_cost", "Other Mandatory"],
+    ["other_mandatory", "Other Mandatory"],
+    ["other_pct_gdp", "Other Mandatory"],
     ["mandatory_direct_cost", "Other Mandatory Direct Cost"]
   ];
 
@@ -238,6 +258,12 @@
     return document.querySelector(selector);
   }
 
+  function monthNumberToName(value) {
+    const n = toNumber(value, null);
+    if (!n || n < 1 || n > 12) return "";
+    return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][n - 1];
+  }
+
   function firstValue(row, keys, fallback = "") {
     for (const key of keys) {
       const value = cleanCell(row?.[key]);
@@ -246,18 +272,56 @@
     return fallback;
   }
 
+  function getComputedValue(row, key) {
+    const direct = toNumber(row?.[key], null);
+
+    if (direct !== null && Number.isFinite(direct)) {
+      if (key === "other_pct_gdp") {
+        const gdp = toNumber(row?.real_gdp ?? row?.gdp ?? row?.nominal_gdp, null);
+        if (gdp === null) return 0;
+
+        const pctDecimal = rawHasPercent(row?.other_pct_gdp) || Math.abs(direct) > 1
+          ? direct / 100
+          : direct;
+
+        return gdp * pctDecimal;
+      }
+
+      return direct;
+    }
+
+    if (key === "other_mandatory_cost" || key === "other_mandatory") {
+      const directOther = toNumber(row?.other_mandatory_cost ?? row?.other_mandatory, null);
+      if (directOther !== null && directOther > 0) return directOther;
+
+      const pct = toNumber(row?.other_pct_gdp, null);
+      const gdp = toNumber(row?.real_gdp ?? row?.gdp ?? row?.nominal_gdp, null);
+
+      if (pct !== null && gdp !== null) {
+        const pctDecimal = rawHasPercent(row?.other_pct_gdp) || Math.abs(pct) > 1
+          ? pct / 100
+          : pct;
+
+        return gdp * pctDecimal;
+      }
+    }
+
+    return 0;
+  }
+
   function getValue(row, keys) {
-    return toNumber(firstValue(row, keys, ""), null);
+    for (const key of keys) {
+      const value = getComputedValue(row, key);
+      if (value !== null && value !== undefined && Number.isFinite(value)) {
+        if (value !== 0 || cleanCell(row?.[key]) !== "") return value;
+      }
+    }
+
+    return null;
   }
 
   function yearLabel(row, index = 0) {
     return firstValue(row, ["label", "year", "date", "fiscal_year"], String(index + 1));
-  }
-
-  function monthNumberToName(value) {
-    const n = toNumber(value, null);
-    if (!n || n < 1 || n > 12) return "";
-    return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][n - 1];
   }
 
   function monthLabel(row, index = 0) {
@@ -305,7 +369,7 @@
   async function safeFetch(sheetName) {
     try {
       if (!fetchSheets) throw new Error("APRP.fetchSheets missing. Check sheets.js loads before economy.js.");
-      const data = await fetchSheets([sheetName]);
+      const data = await fetchSheets([sheetName], { bustCache: true });
       return data?.[sheetName] || [];
     } catch (error) {
       console.warn(`Failed loading ${sheetName}`, error);
@@ -363,14 +427,7 @@
   }
 
   async function loadData() {
-    const [
-      econ,
-      monthly,
-      control,
-      revenue,
-      discretionary,
-      mandatory
-    ] = await Promise.all([
+    const [econ, monthly, control, revenue, discretionary, mandatory] = await Promise.all([
       safeFetch("WEB_ECON"),
       safeFetch("MONTHLY_ENGINE"),
       safeFetch("CONTROL_CONFIG"),
@@ -450,15 +507,8 @@
           #eee8dc;
       }
 
-      .econ-clean-page {
-        display: grid;
-        gap: 16px;
-      }
-
-      .econ-section {
-        display: grid;
-        gap: 10px;
-      }
+      .econ-clean-page { display: grid; gap: 16px; }
+      .econ-section { display: grid; gap: 10px; }
 
       .econ-heading {
         display: flex;
@@ -511,20 +561,16 @@
         border-color: rgba(255,255,255,.12);
       }
 
-      .econ-panel h3 {
+      .econ-panel h3,
+      .econ-chart-card h3,
+      .econ-pie-card h3 {
         margin: 4px 0 10px;
         color: #07111f;
         font-family: Georgia, serif;
-        font-size: 1.08rem;
       }
 
-      .econ-panel.dark h3 {
-        color: #fff;
-      }
-
-      .econ-panel.dark .econ-eyebrow {
-        color: #93c5fd;
-      }
+      .econ-panel.dark h3 { color: #fff; }
+      .econ-panel.dark .econ-eyebrow { color: #93c5fd; }
 
       .econ-note {
         color: #64748b;
@@ -532,9 +578,7 @@
         line-height: 1.35;
       }
 
-      .econ-panel.dark .econ-note {
-        color: #cbd5e1;
-      }
+      .econ-panel.dark .econ-note { color: #cbd5e1; }
 
       .econ-tile-grid {
         display: grid;
@@ -576,10 +620,7 @@
         font-weight: 850;
       }
 
-      .econ-movement-list {
-        display: grid;
-        gap: 7px;
-      }
+      .econ-movement-list { display: grid; gap: 7px; }
 
       .econ-movement-row {
         display: grid;
@@ -614,15 +655,8 @@
         white-space: nowrap;
       }
 
-      .econ-pill.up {
-        background: rgba(22,101,52,.28);
-        border-color: rgba(34,197,94,.35);
-      }
-
-      .econ-pill.down {
-        background: rgba(153,27,27,.30);
-        border-color: rgba(248,113,113,.35);
-      }
+      .econ-pill.up { background: rgba(22,101,52,.28); border-color: rgba(34,197,94,.35); }
+      .econ-pill.down { background: rgba(153,27,27,.30); border-color: rgba(248,113,113,.35); }
 
       .econ-filter-bar {
         display: flex;
@@ -662,13 +696,6 @@
         overflow: hidden;
       }
 
-      .econ-chart-card h3 {
-        margin: 3px 0 2px;
-        color: #07111f;
-        font-family: Georgia, serif;
-        font-size: 1rem;
-      }
-
       .econ-chart-meta {
         color: #475569;
         font-size: .66rem;
@@ -703,9 +730,7 @@
         stroke-linejoin: round;
       }
 
-      .econ-chart-area {
-        fill: rgba(30,64,175,.13);
-      }
+      .econ-chart-area { fill: rgba(30,64,175,.13); }
 
       .econ-chart-dot {
         fill: #1d4ed8;
@@ -816,13 +841,6 @@
         box-shadow: 0 16px 34px rgba(15,23,42,.11);
       }
 
-      .econ-pie-card h3 {
-        margin: 4px 0 2px;
-        color: #07111f;
-        font-family: Georgia, serif;
-        font-size: 1rem;
-      }
-
       .econ-pie-wrap {
         display: grid;
         grid-template-columns: 150px minmax(0, 1fr);
@@ -876,9 +894,7 @@
         backdrop-filter: blur(8px);
       }
 
-      .econ-pie-modal.is-open {
-        display: grid;
-      }
+      .econ-pie-modal.is-open { display: grid; }
 
       .econ-pie-modal-card {
         width: min(980px, 96vw);
@@ -988,8 +1004,10 @@
   function shortLabel(label) {
     const text = cleanCell(label);
     if (text.length <= 8) return text;
+
     const parts = text.split(/\s+/);
     if (parts.length >= 2) return `${parts[0].slice(0, 3)} ${parts[parts.length - 1]}`;
+
     return text.slice(0, 8);
   }
 
@@ -1075,13 +1093,23 @@
   }
 
   function buildPieData(row, fields) {
+    const seen = new Set();
+
     return fields
       .map(([key, label]) => ({
         key,
         label,
-        value: toNumber(row?.[key], 0)
+        value: getComputedValue(row, key)
       }))
-      .filter((item) => item.value > 0)
+      .filter((item) => {
+        if (item.value <= 0) return false;
+
+        const signature = `${item.label}`;
+        if (seen.has(signature)) return false;
+        seen.add(signature);
+
+        return true;
+      })
       .sort((a, b) => b.value - a.value);
   }
 
@@ -1135,6 +1163,7 @@
       <div class="econ-pie-legend">
         ${items.map((item, index) => {
           const pct = total ? (item.value / total) * 100 : 0;
+
           return `
             <div class="econ-pie-legend-row">
               <span class="econ-pie-dot" style="background:${PIE_COLORS[index % PIE_COLORS.length]}"></span>
@@ -1191,8 +1220,7 @@
   function setupPieModals() {
     document.querySelectorAll("[data-pie-modal]").forEach((card) => {
       card.addEventListener("click", () => {
-        const id = card.dataset.pieModal;
-        const modal = document.getElementById(id);
+        const modal = document.getElementById(card.dataset.pieModal);
         if (!modal) return;
         modal.classList.add("is-open");
         modal.setAttribute("aria-hidden", "false");
@@ -1219,6 +1247,7 @@
 
     document.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
+
       document.querySelectorAll(".econ-pie-modal.is-open").forEach((modal) => {
         modal.classList.remove("is-open");
         modal.setAttribute("aria-hidden", "true");
@@ -1354,19 +1383,6 @@
     `;
   }
 
-  function renderSpendingCharts(group = "All") {
-    const slot = getEl("#econ-spending-charts");
-    if (!slot) return;
-
-    const stats = filterStats(SPENDING_STATS, group);
-
-    slot.innerHTML = `
-      <div class="econ-chart-grid">
-        ${stats.map((stat) => chartCard(stat, rowPoints(DISCRETIONARY_ROWS, stat), "yearly")).join("")}
-      </div>
-    `;
-  }
-
   function renderRevenueCharts(group = "All") {
     const slot = getEl("#econ-revenue-charts");
     if (!slot) return;
@@ -1376,6 +1392,19 @@
     slot.innerHTML = `
       <div class="econ-chart-grid">
         ${stats.map((stat) => chartCard(stat, rowPoints(REVENUE_ROWS, stat), "yearly")).join("")}
+      </div>
+    `;
+  }
+
+  function renderSpendingCharts(group = "All") {
+    const slot = getEl("#econ-spending-charts");
+    if (!slot) return;
+
+    const stats = filterStats(SPENDING_STATS, group);
+
+    slot.innerHTML = `
+      <div class="econ-chart-grid">
+        ${stats.map((stat) => chartCard(stat, rowPoints(DISCRETIONARY_ROWS, stat), "yearly")).join("")}
       </div>
     `;
   }
@@ -1537,7 +1566,7 @@
 
             <div class="econ-pie-grid">
               ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS, "revenue-pie-modal")}
-              ${pieCard("Discretionary Spending", "Department, agency, and other event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
+              ${pieCard("Discretionary Spending", "Departments, agencies, and event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
               ${pieCard("Mandatory Spending", "Entitlements, obligations, and other mandatory costs", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
             </div>
 
@@ -1705,6 +1734,7 @@
       console.error("Economy page failed:", error);
 
       const main = document.querySelector("main") || document.body;
+
       main.innerHTML = `
         <section class="section section-tight">
           <div class="container-wide">
