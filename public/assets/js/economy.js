@@ -11,15 +11,17 @@
    - YEARLY_DISCRETIONARY_ENGINE
    - YEARLY_MANDATORY_ENGINE
 
-   Key additions:
-   - Total Revenue key indicator from YEARLY_REVENUE_ENGINE.
-   - Total Spending key indicator from YEARLY_FISCAL_OUTPUT.
-   - Population key indicator from YEARLY_MACRO_ENGINE.
+   Includes:
+   - Macro key tiles.
+   - Total Revenue tile.
+   - Total Spending tile.
+   - Population tile.
    - GDP Per Capita auto-calculated from GDP billions / population millions × 1000.
-   - Raw Interest on Debt key indicator from YEARLY_FISCAL_OUTPUT interest_cost.
-   - Mandatory spending donut includes interest_cost as Interest on Debt.
-   - Mandatory spending donut includes other_mandatory_cost as Other Mandatory.
-   - Discretionary spending donut includes event_direct_cost as Other Event Direct Cost.
+   - Interest on Debt tile from YEARLY_FISCAL_OUTPUT interest_cost.
+   - Revenue, discretionary, and mandatory donut charts.
+   - Mandatory donut includes Interest on Debt from YEARLY_FISCAL_OUTPUT.
+   - Mandatory donut includes other_mandatory_cost.
+   - Discretionary donut includes event_direct_cost.
 */
 
 (function () {
@@ -69,20 +71,22 @@
   const YEARLY_STATS = [
     { id: "gdp", title: "GDP", keys: ["gdp", "real_gdp", "nominal_gdp"], prefix: "$", group: "Output", changeType: "absolute" },
     { id: "debt", title: "National Debt", keys: ["debt", "ending_debt", "national_debt"], prefix: "$", group: "Fiscal", changeType: "absolute" },
-    { id: "growth", title: "GDP Growth", keys: ["growth", "gdp_growth", "real_growth", "annual_gdp_growth"], suffix: "%", group: "Output", changeType: "pp" },
-    { id: "job_creation", title: "Job Creation", keys: ["job_creation", "annual_job_creation", "jobs", "jobs_created", "net_jobs"], group: "Labor", changeType: "absolute" },
-    { id: "deficit", title: "Raw Deficit", keys: ["deficit", "final_surplus_deficit", "deficit_surplus", "raw_deficit"], prefix: "$", group: "Fiscal", changeType: "absolute" },
-    { id: "unemployment", title: "Unemployment", keys: ["unemployment", "unemployment_rate"], suffix: "%", group: "Labor", changeType: "pp" },
-    { id: "debt_gdp", title: "Debt-to-GDP", keys: ["debt_to_gdp", "debt_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
-    { id: "deficit_gdp", title: "Deficit-to-GDP", keys: ["deficit_gdp", "deficit_to_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
-    { id: "inflation", title: "Inflation", keys: ["inflation", "inflation_rate"], suffix: "%", group: "Prices", changeType: "pp" },
-    { id: "median_wage", title: "Median Wage", keys: ["median_wage", "final_median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" },
-
     { id: "total_revenue", title: "Total Revenue", keys: ["total_revenue"], prefix: "$", group: "Fiscal", changeType: "absolute" },
     { id: "total_spending", title: "Total Spending", keys: ["total_spending"], prefix: "$", group: "Fiscal", changeType: "absolute" },
+    { id: "deficit", title: "Raw Deficit", keys: ["deficit", "final_surplus_deficit", "deficit_surplus", "raw_deficit"], prefix: "$", group: "Fiscal", changeType: "absolute" },
     { id: "interest_cost", title: "Interest on Debt", keys: ["interest_cost"], prefix: "$", group: "Fiscal", changeType: "absolute" },
+
+    { id: "growth", title: "GDP Growth", keys: ["growth", "gdp_growth", "real_growth", "annual_gdp_growth"], suffix: "%", group: "Output", changeType: "pp" },
+    { id: "job_creation", title: "Job Creation", keys: ["job_creation", "annual_job_creation", "jobs", "jobs_created", "net_jobs"], group: "Labor", changeType: "absolute" },
+    { id: "unemployment", title: "Unemployment", keys: ["unemployment", "unemployment_rate"], suffix: "%", group: "Labor", changeType: "pp" },
+    { id: "inflation", title: "Inflation", keys: ["inflation", "inflation_rate"], suffix: "%", group: "Prices", changeType: "pp" },
+
     { id: "population", title: "Population", keys: ["population"], suffix: "M", group: "Population", changeType: "absolute" },
-    { id: "gdp_per_capita", title: "GDP Per Capita", keys: ["__gdp_per_capita__"], prefix: "$", group: "Population", changeType: "absolute" }
+    { id: "gdp_per_capita", title: "GDP Per Capita", keys: ["__gdp_per_capita__"], prefix: "$", group: "Population", changeType: "absolute" },
+
+    { id: "debt_gdp", title: "Debt-to-GDP", keys: ["debt_to_gdp", "debt_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
+    { id: "deficit_gdp", title: "Deficit-to-GDP", keys: ["deficit_gdp", "deficit_to_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
+    { id: "median_wage", title: "Median Wage", keys: ["median_wage", "final_median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" }
   ];
 
   const MONTHLY_STATS = [
@@ -152,7 +156,6 @@
     { id: "general_government", title: "General Government", keys: ["general_government_spending"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "event_direct_cost", title: "Other Event Direct Cost", keys: ["event_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "event_cost_from_pct_gdp", title: "Other Event GDP Cost", keys: ["event_cost_from_pct_gdp"], prefix: "$", group: "Other", changeType: "absolute" },
-
     { id: "total_discretionary", title: "Total Discretionary", keys: ["total_discretionary_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "discretionary_gdp", title: "Discretionary % GDP", keys: ["discretionary_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
@@ -170,7 +173,6 @@
     { id: "interest_cost", title: "Interest on Debt", keys: ["interest_cost"], prefix: "$", group: "Debt Service", changeType: "absolute" },
     { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "mandatory_direct", title: "Other Mandatory Direct Cost", keys: ["mandatory_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
-
     { id: "total_mandatory", title: "Total Mandatory", keys: ["total_mandatory_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
     { id: "mandatory_gdp", title: "Mandatory % GDP", keys: ["mandatory_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
   ];
@@ -260,11 +262,13 @@
     "total_revenue",
     "total_spending",
     "deficit",
+
     "interest_cost",
     "growth",
     "job_creation",
     "unemployment",
     "inflation",
+
     "population",
     "gdp_per_capita",
     "debt_gdp",
@@ -286,7 +290,7 @@
   }
 
   function yearKey(row) {
-    const raw = firstValue(row, ["year", "fiscal_year", "date"], "");
+    const raw = firstValue(row, ["year", "fiscal_year", "date", "label"], "");
     const match = String(raw).match(/\d{4}/);
     return match ? match[0] : "";
   }
@@ -304,11 +308,17 @@
       for (const row of group || []) {
         const key = yearKey(row);
         if (!key) continue;
-        map.set(key, { ...(map.get(key) || {}), ...row });
+
+        map.set(key, {
+          ...(map.get(key) || {}),
+          ...row
+        });
       }
     }
 
-    return [...map.values()].sort((a, b) => toNumber(yearKey(a), 0) - toNumber(yearKey(b), 0));
+    return [...map.values()].sort((a, b) => {
+      return toNumber(yearKey(a), 0) - toNumber(yearKey(b), 0);
+    });
   }
 
   function getComputedValue(row, key) {
@@ -1344,10 +1354,12 @@
 
   function macroTile(stat, latest, previous) {
     const value = getValue(latest, stat.keys);
-    if (value === null) return "";
-
     const previousValue = getValue(previous, stat.keys);
-    const diff = previousValue === null ? null : value - previousValue;
+
+    const diff =
+      value === null || previousValue === null
+        ? null
+        : value - previousValue;
 
     return `
       <div class="econ-tile">
