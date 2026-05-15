@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  console.log("ECONOMY.JS LOADED — v20260515-deficit-interest-fullrewrite");
+  console.log("ECONOMY.JS LOADED — v20260515-deficit-gdp-fullfix");
 
   const APRP = window.APRP || {};
   const fetchSheets = APRP.fetchSheets;
@@ -29,6 +29,19 @@
 
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function normalizePct(value) {
+    const raw = cleanCell(value);
+    const num = toNumber(raw, null);
+
+    if (num === null || !Number.isFinite(num)) return null;
+
+    if (raw.includes("%")) return num;
+
+    if (Math.abs(num) <= 1) return num * 100;
+
+    return num;
   }
 
   let ECON_ROWS = [];
@@ -62,8 +75,8 @@
     { id: "median_wage", title: "Median Wage", keys: ["final_median_wage", "median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" },
     { id: "population", title: "Population", keys: ["population"], suffix: "M", group: "Population", changeType: "absolute" },
     { id: "gdp_per_capita", title: "GDP Per Capita", keys: ["__gdp_per_capita__"], prefix: "$", group: "Population", changeType: "absolute" },
-    { id: "debt_gdp", title: "Debt-to-GDP", keys: ["debt_to_gdp", "debt_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
-    { id: "deficit_gdp", title: "Deficit-to-GDP", keys: ["deficit_pct_gdp", "deficit_gdp", "deficit_to_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" }
+    { id: "debt_gdp", title: "Debt-to-GDP", keys: ["__debt_gdp_display__"], suffix: "%", group: "Fiscal", changeType: "pp" },
+    { id: "deficit_gdp", title: "Deficit-to-GDP", keys: ["__deficit_gdp_display__"], suffix: "%", group: "Fiscal", changeType: "pp" }
   ];
 
   const TOP_YEARLY_TILES = [
@@ -254,6 +267,22 @@
     return macro !== null && Number.isFinite(macro) ? macro : null;
   }
 
+  function getDebt(row) {
+    const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row)) || row;
+
+    const direct = toNumber(
+      fiscalRow.ending_debt ??
+      fiscalRow.debt ??
+      fiscalRow.national_debt ??
+      row.ending_debt ??
+      row.debt ??
+      row.national_debt,
+      null
+    );
+
+    return direct !== null && Number.isFinite(direct) ? direct : null;
+  }
+
   function getPopulationRaw(row) {
     const direct = toNumber(row.population, null);
     if (direct !== null && Number.isFinite(direct)) return direct;
@@ -282,9 +311,9 @@
   function getRawInterestFromFiscal(row) {
     const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row));
 
-    // This is the key fix:
-    // Interest does NOT exist before FY2011 in your fiscal output.
-    // Returning null means the chart completely skips FY2001–FY2010.
+    // Important:
+    // Interest only exists in YEARLY_FISCAL_OUTPUT from FY2011 onward.
+    // Returning null means charts skip pre-FY2011 completely.
     if (!fiscalRow) return null;
 
     let value = toNumber(fiscalRow.interest_cost, null);
@@ -302,7 +331,12 @@
     const finalSurplusDeficit = toNumber(fiscalRow.final_surplus_deficit, null);
 
     if (finalSurplusDeficit !== null && Number.isFinite(finalSurplusDeficit)) {
-      return Math.abs(finalSurplusDeficit);
+      // Deficit stored as negative in sheet.
+      // Dashboard should show deficit as positive.
+      // If it is a surplus, show as negative deficit.
+      return finalSurplusDeficit < 0
+        ? Math.abs(finalSurplusDeficit)
+        : -Math.abs(finalSurplusDeficit);
     }
 
     const fallback = toNumber(fiscalRow.raw_deficit ?? fiscalRow.deficit ?? fiscalRow.deficit_surplus, null);
@@ -314,11 +348,76 @@
     return null;
   }
 
+  function getDeficitGDPDisplay(row) {
+    const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row)) || row;
+
+    const finalSurplusDeficit = toNumber(fiscalRow.final_surplus_deficit, null);
+    const gdp = getGDP(row);
+
+    if (
+      finalSurplusDeficit !== null &&
+      Number.isFinite(finalSurplusDeficit) &&
+      gdp !== null &&
+      Number.isFinite(gdp) &&
+      gdp > 0
+    ) {
+      const pct = (Math.abs(finalSurplusDeficit) / gdp) * 100;
+      return finalSurplusDeficit < 0 ? pct : -pct;
+    }
+
+    const rawDeficit = getRawDeficitDisplay(row);
+
+    if (rawDeficit !== null && gdp !== null && gdp > 0) {
+      return rawDeficit >= 0 ? (Math.abs(rawDeficit) / gdp) * 100 : -(Math.abs(rawDeficit) / gdp) * 100;
+    }
+
+    const direct = normalizePct(
+      fiscalRow.deficit_pct_gdp ??
+      fiscalRow.deficit_gdp ??
+      fiscalRow.deficit_to_gdp ??
+      row.deficit_pct_gdp ??
+      row.deficit_gdp ??
+      row.deficit_to_gdp
+    );
+
+    if (direct !== null && Number.isFinite(direct)) {
+      return Math.abs(direct);
+    }
+
+    return null;
+  }
+
+  function getDebtGDPDisplay(row) {
+    const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row)) || row;
+
+    const direct = normalizePct(
+      fiscalRow.debt_to_gdp ??
+      fiscalRow.debt_gdp ??
+      row.debt_to_gdp ??
+      row.debt_gdp
+    );
+
+    if (direct !== null && Number.isFinite(direct)) {
+      return Math.abs(direct);
+    }
+
+    const debt = getDebt(row);
+    const gdp = getGDP(row);
+
+    if (debt !== null && gdp !== null && gdp > 0) {
+      return (debt / gdp) * 100;
+    }
+
+    return null;
+  }
+
   function getComputedValue(row, key) {
     if (!row || !key) return null;
 
     if (key === "__interest_from_fiscal__") return getRawInterestFromFiscal(row);
     if (key === "__raw_deficit_display__") return getRawDeficitDisplay(row);
+    if (key === "__deficit_gdp_display__") return getDeficitGDPDisplay(row);
+    if (key === "__debt_gdp_display__") return getDebtGDPDisplay(row);
     if (key === "__gdp_per_capita__") return getGDPPerCapita(row);
     if (key === "population") return getPopulationMillions(row);
 
@@ -519,9 +618,11 @@
 
     clampDefaultChartYears();
 
-    console.log("INTEREST CHECK — should start FY2011 only", FISCAL_ROWS.map((r) => ({
-      year: yearKey(r),
-      interest_cost: r.interest_cost
+    console.log("DEFICIT CHECK", DASHBOARD_ROWS.map((row) => ({
+      year: yearKey(row),
+      rawDeficit: getRawDeficitDisplay(row),
+      deficitGdp: getDeficitGDPDisplay(row),
+      interest: getRawInterestFromFiscal(row)
     })));
   }
 
@@ -1523,6 +1624,7 @@
               <th>Spending</th>
               <th>Deficit</th>
               <th>Interest</th>
+              <th>Deficit/GDP</th>
               <th>Unemployment</th>
               <th>Inflation</th>
             </tr>
@@ -1537,6 +1639,7 @@
                 <td>${safeHTML(formatValue(getValue(row, stat("total_spending").keys), stat("total_spending")))}</td>
                 <td>${safeHTML(formatValue(getValue(row, stat("deficit").keys), stat("deficit")))}</td>
                 <td>${safeHTML(formatValue(getValue(row, stat("interest_cost").keys), stat("interest_cost")))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("deficit_gdp").keys), stat("deficit_gdp")))}</td>
                 <td>${safeHTML(formatValue(getValue(row, stat("unemployment").keys), stat("unemployment")))}</td>
                 <td>${safeHTML(formatValue(getValue(row, stat("inflation").keys), stat("inflation")))}</td>
               </tr>
@@ -1577,7 +1680,7 @@
               <div>
                 <div class="econ-eyebrow">Office of Budget Management</div>
                 <h2>Macro Dashboard</h2>
-                <p>${safeHTML(displayYear)} fiscal snapshot. ${safeHTML(currentPeriodLabel)}. Movement is shown as absolute movement or percentage points.</p>
+                <p>${safeHTML(displayYear)} fiscal snapshot. ${safeHTML(currentPeriodLabel)}. Deficit and deficit-to-GDP are displayed as positive deficit pressure unless the year is a surplus.</p>
               </div>
             </div>
 
@@ -1760,6 +1863,7 @@
     const discretionary = getValue(latestSpending, ["total_discretionary_spending"]);
     const mandatory = getValue(latestMandatory, ["total_mandatory_spending"]);
     const totalSpending = getValue(latest, ["total_spending"]);
+    const deficitGdp = getValue(latest, ["__deficit_gdp_display__"]);
     const interest = getValue(latest, ["__interest_from_fiscal__"]);
     const ucareRevenue = getValue(latestRevenue, ["ucare_revenue"]);
     const ucareCost = getValue(latestMandatory, ["ucare_cost"]);
@@ -1773,6 +1877,7 @@
         Discretionary: ${safeHTML(formatValue(discretionary, { prefix: "$" }))} •
         Mandatory: ${safeHTML(formatValue(mandatory, { prefix: "$" }))} •
         Total Spending: ${safeHTML(formatValue(totalSpending, { prefix: "$" }))} •
+        Deficit/GDP: ${safeHTML(formatValue(deficitGdp, { suffix: "%" }))} •
         Interest: ${safeHTML(formatValue(interest, { prefix: "$" }))} •
         UCare Revenue: ${safeHTML(formatValue(ucareRevenue, { prefix: "$" }))} •
         UCare Cost: ${safeHTML(formatValue(ucareCost, { prefix: "$" }))}
