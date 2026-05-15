@@ -7,7 +7,7 @@
 
   <title>Economy | APRP Federal Archive</title>
 
-  <link rel="stylesheet" href="./assets/css/style.css?v=20260515-econ-exact-layout" />
+  <link rel="stylesheet" href="./assets/css/style.css?v=20260515-deficit-interest-fullrewrite" />
 
   <style>
     :root {
@@ -19,19 +19,12 @@
       --soft: #64748b;
       --line: rgba(15, 23, 42, 0.14);
       --panel: rgba(248, 250, 252, 0.9);
-      --panel-strong: rgba(255, 255, 255, 0.96);
       --cream: #eee8dc;
-      --cream-2: #e3ded5;
       --shadow: 0 16px 42px rgba(15, 23, 42, 0.12);
-      --radius: 22px;
     }
 
     * {
       box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
     }
 
     body {
@@ -99,12 +92,7 @@
         linear-gradient(145deg, #1d4ed8, #07111f);
       box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
       font-weight: 1000;
-      letter-spacing: -0.03em;
       font-size: 1.05rem;
-    }
-
-    .brand-text {
-      min-width: 0;
     }
 
     .brand-text strong {
@@ -216,7 +204,6 @@
       border-radius: 999px;
       background: conic-gradient(from 130deg, #1d4ed8, #b91c1c, #047857, #7c3aed, #1d4ed8);
       opacity: 0.10;
-      filter: blur(1px);
     }
 
     .eyebrow {
@@ -407,15 +394,6 @@
       display: block;
     }
 
-    .noscript-card {
-      border: 1px solid rgba(185, 28, 28, 0.32);
-      border-radius: 20px;
-      padding: 14px;
-      background: rgba(254, 226, 226, 0.92);
-      color: #7f1d1d;
-      font-weight: 900;
-    }
-
     @keyframes pulse {
       0%, 100% {
         transform: scale(0.88);
@@ -434,10 +412,7 @@
         padding: 10px 0;
       }
 
-      .archive-nav {
-        justify-content: flex-start;
-      }
-
+      .archive-nav,
       .topbar-actions {
         justify-content: flex-start;
       }
@@ -473,11 +448,6 @@
 
       .hero-stats {
         grid-template-columns: 1fr;
-      }
-
-      .archive-nav a {
-        padding: 7px 9px;
-        font-size: 0.68rem;
       }
     }
   </style>
@@ -588,12 +558,6 @@
           </section>
 
           <div class="error-box" id="economy-error-box"></div>
-
-          <noscript>
-            <div class="noscript-card">
-              JavaScript is required for the APRP Economy Dashboard.
-            </div>
-          </noscript>
         </div>
       </section>
     </main>
@@ -608,62 +572,40 @@
 
       function showError(message) {
         if (status) status.textContent = "Load Error";
-
         if (!errorBox) return;
-
         errorBox.classList.add("is-visible");
         errorBox.textContent = message;
       }
 
-      window.APRP_ECONOMY_HTML_VERSION = "20260515-econ-exact-layout";
+      window.APRP_ECONOMY_HTML_VERSION = "20260515-deficit-interest-fullrewrite";
 
       window.addEventListener("error", function (event) {
-        const file = event.filename || "unknown file";
-        const line = event.lineno || "unknown line";
-        const col = event.colno || "unknown column";
-
         showError(
           "Economy page failed to load.\n\n" +
           "Error: " + event.message + "\n" +
-          "File: " + file + "\n" +
-          "Line: " + line + "\n" +
-          "Column: " + col + "\n\n" +
-          "Most likely causes:\n" +
-          "1. sheets.js path is wrong or did not load.\n" +
-          "2. economy.js has a syntax error.\n" +
-          "3. A required sheet name or header is missing."
+          "File: " + (event.filename || "unknown file") + "\n" +
+          "Line: " + (event.lineno || "unknown line") + "\n" +
+          "Column: " + (event.colno || "unknown column")
         );
       });
 
       window.addEventListener("unhandledrejection", function (event) {
         showError(
-          "Economy page failed during async loading.\n\n" +
-          "Reason: " +
-          (event.reason && event.reason.message
-            ? event.reason.message
-            : String(event.reason))
+          "Economy page failed during async loading.\n\nReason: " +
+          (event.reason && event.reason.message ? event.reason.message : String(event.reason))
         );
       });
-
-      setTimeout(function () {
-        const root = document.getElementById("economy-root");
-        const stillLoading = root && root.textContent.includes("Fetching Records");
-
-        if (stillLoading && status) {
-          status.textContent = "Still Loading";
-        }
-      }, 4500);
     })();
   </script>
 
   <script
-    src="./assets/js/sheets.js?v=20260515-econ-exact-layout"
+    src="./assets/js/sheets.js?v=20260515-deficit-interest-fullrewrite"
     onload="document.getElementById('economy-load-status') && (document.getElementById('economy-load-status').textContent = 'Sheets Loaded')"
     onerror="document.getElementById('economy-error-box').classList.add('is-visible');document.getElementById('economy-error-box').textContent='Failed to load ./assets/js/sheets.js. Check the filename/path in your repository.';"
   ></script>
 
   <script
-    src="./assets/js/economy.js?v=20260515-econ-exact-layout"
+    src="./assets/js/economy.js?v=20260515-deficit-interest-fullrewrite"
     onload="document.getElementById('economy-load-status') && (document.getElementById('economy-load-status').textContent = 'Dashboard Loaded')"
     onerror="document.getElementById('economy-error-box').classList.add('is-visible');document.getElementById('economy-error-box').textContent='Failed to load ./assets/js/economy.js. Check the filename/path in your repository.';"
   ></script>
