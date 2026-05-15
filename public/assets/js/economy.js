@@ -1,17 +1,7 @@
-/* APRP Federal Archive — Economy Page
-   Full rewrite:
-   - Fixes GDP per capita
-   - Fixes population display
-   - Fixes interest-on-debt stat/chart/pie scale
-   - Shows UCare revenue and UCare spending
-   - Adds chart year range controls
-   - Adds previous fiscal year macro dropdown
-*/
-
 (function () {
   "use strict";
 
-  console.log("ECONOMY.JS LOADED — v20260515-range-dropdown-hardfix");
+  console.log("ECONOMY.JS LOADED — v20260515-deficit-interest-fullrewrite");
 
   const APRP = window.APRP || {};
   const fetchSheets = APRP.fetchSheets;
@@ -53,7 +43,6 @@
 
   let CURRENT_YEAR = null;
   let CURRENT_MONTH = null;
-
   let MONTHLY_RANGE = "all";
   let CHART_START_YEAR = null;
   let CHART_END_YEAR = null;
@@ -64,18 +53,15 @@
     { id: "debt", title: "National Debt", keys: ["ending_debt", "debt", "national_debt"], prefix: "$", group: "Fiscal", changeType: "absolute" },
     { id: "total_revenue", title: "Total Revenue", keys: ["total_revenue"], prefix: "$", group: "Fiscal", changeType: "absolute" },
     { id: "total_spending", title: "Total Spending", keys: ["total_spending"], prefix: "$", group: "Fiscal", changeType: "absolute" },
-    { id: "deficit", title: "Raw Deficit", keys: ["final_surplus_deficit", "deficit", "deficit_surplus", "raw_deficit"], prefix: "$", group: "Fiscal", changeType: "absolute" },
+    { id: "deficit", title: "Raw Deficit", keys: ["__raw_deficit_display__"], prefix: "$", group: "Fiscal", changeType: "absolute" },
     { id: "interest_cost", title: "Interest on Debt", keys: ["__interest_from_fiscal__"], prefix: "$", group: "Fiscal", changeType: "absolute" },
-
     { id: "growth", title: "GDP Growth", keys: ["final_gdp_growth", "gdp_growth", "growth", "real_growth", "annual_gdp_growth"], suffix: "%", group: "Output", changeType: "pp" },
     { id: "job_creation", title: "Job Creation", keys: ["job_creation", "annual_job_creation", "jobs", "jobs_created", "net_jobs"], group: "Labor", changeType: "absolute" },
     { id: "unemployment", title: "Unemployment", keys: ["final_unemployment", "unemployment", "unemployment_rate"], suffix: "%", group: "Labor", changeType: "pp" },
     { id: "inflation", title: "Inflation", keys: ["final_inflation", "inflation", "inflation_rate"], suffix: "%", group: "Prices", changeType: "pp" },
     { id: "median_wage", title: "Median Wage", keys: ["final_median_wage", "median_wage", "wage", "median_income"], prefix: "$", group: "Labor", changeType: "absolute" },
-
     { id: "population", title: "Population", keys: ["population"], suffix: "M", group: "Population", changeType: "absolute" },
     { id: "gdp_per_capita", title: "GDP Per Capita", keys: ["__gdp_per_capita__"], prefix: "$", group: "Population", changeType: "absolute" },
-
     { id: "debt_gdp", title: "Debt-to-GDP", keys: ["debt_to_gdp", "debt_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" },
     { id: "deficit_gdp", title: "Deficit-to-GDP", keys: ["deficit_pct_gdp", "deficit_gdp", "deficit_to_gdp"], suffix: "%", group: "Fiscal", changeType: "pp" }
   ];
@@ -113,34 +99,17 @@
     { id: "income_60_100k", title: "Income $60k–100k", keys: ["income_60_100k_revenue"], prefix: "$", group: "Income", changeType: "absolute" },
     { id: "income_100_250k", title: "Income $100k–250k", keys: ["income_100_250k_revenue"], prefix: "$", group: "Income", changeType: "absolute" },
     { id: "income_250_500k", title: "Income $250k–500k", keys: ["income_250_500k_revenue"], prefix: "$", group: "Income", changeType: "absolute" },
-    { id: "income_500_1000k", title: "Income $500k–1M", keys: ["income_500_1000k_revenue"], prefix: "$", group: "Income", changeType: "absolute" },
-    { id: "income_1000k_5m", title: "Income $1M–5M", keys: ["income_1000k_5m_revenue"], prefix: "$", group: "Income", changeType: "absolute" },
-    { id: "income_5m_10m", title: "Income $5M–10M", keys: ["income_5m_10m_revenue"], prefix: "$", group: "Income", changeType: "absolute" },
-    { id: "income_10m_plus", title: "Income $10M+", keys: ["income_10m_plus_revenue"], prefix: "$", group: "Income", changeType: "absolute" },
-
-    { id: "corp_0_50k", title: "Corp $0–50k", keys: ["corp_0_50k_revenue"], prefix: "$", group: "Corporate", changeType: "absolute" },
-    { id: "corp_50_500k", title: "Corp $50k–500k", keys: ["corp_50_500k_revenue"], prefix: "$", group: "Corporate", changeType: "absolute" },
-    { id: "corp_500k_5m", title: "Corp $500k–5M", keys: ["corp_500k_5m_revenue"], prefix: "$", group: "Corporate", changeType: "absolute" },
-    { id: "corp_5m_10m", title: "Corp $5M–10M", keys: ["corp_5m_10m_revenue"], prefix: "$", group: "Corporate", changeType: "absolute" },
-    { id: "corp_10m_100m", title: "Corp $10M–100M", keys: ["corp_10m_100m_revenue"], prefix: "$", group: "Corporate", changeType: "absolute" },
-    { id: "corp_100m_1b", title: "Corp $100M–1B", keys: ["corp_100m_1b_revenue"], prefix: "$", group: "Corporate", changeType: "absolute" },
-    { id: "corp_1b_plus", title: "Corp $1B+", keys: ["corp_1b_plus_revenue"], prefix: "$", group: "Corporate", changeType: "absolute" },
-
     { id: "payroll_medicare", title: "Medicare Payroll", keys: ["payroll_medicare_revenue"], prefix: "$", group: "Payroll", changeType: "absolute" },
     { id: "payroll_social_security", title: "Social Security Payroll", keys: ["payroll_social_security_revenue"], prefix: "$", group: "Payroll", changeType: "absolute" },
     { id: "payroll_worker", title: "Worker Payroll", keys: ["payroll_worker_revenue"], prefix: "$", group: "Payroll", changeType: "absolute" },
-
     { id: "ucare", title: "UCare Revenue", keys: ["ucare_revenue"], prefix: "$", group: "UCare", changeType: "absolute" },
-
     { id: "sales_tax", title: "Sales Tax", keys: ["sales_tax_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "cap_short", title: "Short-Term Capital Gains", keys: ["cap_gains_short_term_revenue"], prefix: "$", group: "Capital Gains", changeType: "absolute" },
     { id: "cap_long", title: "Long-Term Capital Gains", keys: ["cap_gains_long_term_revenue"], prefix: "$", group: "Capital Gains", changeType: "absolute" },
     { id: "excise", title: "Excise Tax", keys: ["excise_tax_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "event_revenue", title: "Event Revenue Impact", keys: ["event_revenue_impact"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "direct_revenue", title: "Direct Revenue", keys: ["direct_revenue"], prefix: "$", group: "Other", changeType: "absolute" },
-
-    { id: "total_revenue", title: "Total Revenue", keys: ["total_revenue"], prefix: "$", group: "Totals", changeType: "absolute" },
-    { id: "revenue_gdp", title: "Revenue % GDP", keys: ["revenue_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
+    { id: "total_revenue", title: "Total Revenue", keys: ["total_revenue"], prefix: "$", group: "Totals", changeType: "absolute" }
   ];
 
   const SPENDING_STATS = [
@@ -158,16 +127,15 @@
     { id: "energy", title: "Energy", keys: ["energy_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
     { id: "commerce", title: "Commerce", keys: ["commerce_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
     { id: "labor", title: "Labor", keys: ["labor_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
-    { id: "hud", title: "Housing & Urban Development", keys: ["housing_urban_development_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
-    { id: "epa", title: "Environmental Protection", keys: ["environmental_protection_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "hud", title: "HUD", keys: ["housing_urban_development_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
+    { id: "epa", title: "EPA", keys: ["environmental_protection_spending"], prefix: "$", group: "Domestic", changeType: "absolute" },
     { id: "nasa", title: "NASA", keys: ["nasa_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
     { id: "sba", title: "SBA", keys: ["sba_spending"], prefix: "$", group: "Agency", changeType: "absolute" },
     { id: "other", title: "Other Agencies", keys: ["other_agencies_spending"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "general_government", title: "General Government", keys: ["general_government_spending"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "event_direct_cost", title: "Other Event Direct Cost", keys: ["event_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "event_cost_from_pct_gdp", title: "Other Event GDP Cost", keys: ["event_cost_from_pct_gdp"], prefix: "$", group: "Other", changeType: "absolute" },
-    { id: "total_discretionary", title: "Total Discretionary", keys: ["total_discretionary_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
-    { id: "discretionary_gdp", title: "Discretionary % GDP", keys: ["discretionary_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
+    { id: "total_discretionary", title: "Total Discretionary", keys: ["total_discretionary_spending"], prefix: "$", group: "Totals", changeType: "absolute" }
   ];
 
   const MANDATORY_STATS = [
@@ -178,14 +146,13 @@
     { id: "snap", title: "SNAP", keys: ["snap_cost"], prefix: "$", group: "Income Support", changeType: "absolute" },
     { id: "child_health", title: "Child Health", keys: ["child_health_cost"], prefix: "$", group: "Health", changeType: "absolute" },
     { id: "fcwa", title: "FCWA", keys: ["fcwa_cost"], prefix: "$", group: "Worker Benefits", changeType: "absolute" },
-    { id: "civilian_retirement", title: "Federal Civilian Retirement", keys: ["fed_civilian_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
-    { id: "military_retirement", title: "Federal Military Retirement", keys: ["fed_military_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
+    { id: "civilian_retirement", title: "Civilian Retirement", keys: ["fed_civilian_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
+    { id: "military_retirement", title: "Military Retirement", keys: ["fed_military_retirement_cost"], prefix: "$", group: "Retirement", changeType: "absolute" },
     { id: "ssi", title: "SSI", keys: ["ssi_cost"], prefix: "$", group: "Income Support", changeType: "absolute" },
     { id: "interest_cost", title: "Interest on Debt", keys: ["__interest_from_fiscal__"], prefix: "$", group: "Debt Service", changeType: "absolute" },
     { id: "other_mandatory", title: "Other Mandatory", keys: ["other_mandatory_cost"], prefix: "$", group: "Other", changeType: "absolute" },
     { id: "mandatory_direct", title: "Other Mandatory Direct Cost", keys: ["mandatory_direct_cost"], prefix: "$", group: "Other", changeType: "absolute" },
-    { id: "total_mandatory", title: "Total Mandatory", keys: ["total_mandatory_spending"], prefix: "$", group: "Totals", changeType: "absolute" },
-    { id: "mandatory_gdp", title: "Mandatory % GDP", keys: ["mandatory_spending_pct_gdp"], suffix: "%", group: "Totals", changeType: "pp" }
+    { id: "total_mandatory", title: "Total Mandatory", keys: ["total_mandatory_spending"], prefix: "$", group: "Totals", changeType: "absolute" }
   ];
 
   const PIE_REVENUE_FIELDS = [
@@ -197,20 +164,8 @@
     ["income_10_30k_revenue", "Income $10k–30k"],
     ["income_250_500k_revenue", "Income $250k–500k"],
     ["ucare_revenue", "UCare Revenue"],
-    ["income_0_10k_revenue", "Income $0–10k"],
-    ["corp_1b_plus_revenue", "Corporate $1B+"],
-    ["corp_100m_1b_revenue", "Corporate $100M–1B"],
-    ["corp_10m_100m_revenue", "Corporate $10M–100M"],
-    ["corp_5m_10m_revenue", "Corporate $5M–10M"],
-    ["corp_500k_5m_revenue", "Corporate $500k–5M"],
-    ["corp_50_500k_revenue", "Corporate $50k–500k"],
-    ["corp_0_50k_revenue", "Corporate $0–50k"],
     ["sales_tax_revenue", "Sales Tax"],
-    ["cap_gains_short_term_revenue", "Short-Term Capital Gains"],
-    ["cap_gains_long_term_revenue", "Long-Term Capital Gains"],
-    ["excise_tax_revenue", "Excise Tax"],
-    ["event_revenue_impact", "Event Revenue Impact"],
-    ["direct_revenue", "Direct Revenue"]
+    ["excise_tax_revenue", "Excise Tax"]
   ];
 
   const PIE_DISCRETIONARY_FIELDS = [
@@ -223,18 +178,7 @@
     ["energy_spending", "Energy"],
     ["justice_spending", "Justice"],
     ["state_foreign_affairs_spending", "State / Foreign Affairs"],
-    ["interior_natural_resources_spending", "Interior / Natural Resources"],
-    ["agriculture_spending", "Agriculture"],
-    ["commerce_spending", "Commerce"],
-    ["labor_spending", "Labor"],
-    ["housing_urban_development_spending", "HUD"],
-    ["environmental_protection_spending", "EPA"],
-    ["nasa_spending", "NASA"],
-    ["sba_spending", "SBA"],
-    ["other_agencies_spending", "Other Agencies"],
-    ["general_government_spending", "General Government"],
-    ["event_direct_cost", "Other Event Direct Cost"],
-    ["event_cost_from_pct_gdp", "Other Event GDP Cost"]
+    ["housing_urban_development_spending", "HUD"]
   ];
 
   const PIE_MANDATORY_FIELDS = [
@@ -249,17 +193,13 @@
     ["child_health_cost", "Child Health"],
     ["fed_military_retirement_cost", "Military Retirement"],
     ["fed_civilian_retirement_cost", "Civilian Retirement"],
-    ["snap_cost", "SNAP"],
-    ["mandatory_direct_cost", "Other Mandatory Direct Cost"]
+    ["snap_cost", "SNAP"]
   ];
 
   const PIE_COLORS = [
     "#1d4ed8", "#b91c1c", "#047857", "#7c3aed", "#c2410c",
     "#0f766e", "#be123c", "#4338ca", "#a16207", "#0369a1",
-    "#15803d", "#6d28d9", "#dc2626", "#2563eb", "#65a30d",
-    "#9333ea", "#0891b2", "#ea580c", "#4f46e5", "#16a34a",
-    "#854d0e", "#0e7490", "#9f1239", "#1e40af", "#166534",
-    "#581c87", "#991b1b"
+    "#15803d", "#6d28d9", "#dc2626", "#2563eb"
   ];
 
   function getEl(selector) {
@@ -271,7 +211,6 @@
       const value = cleanCell(row?.[key]);
       if (value !== "") return value;
     }
-
     return fallback;
   }
 
@@ -312,7 +251,6 @@
 
     const macroRow = findRowByYear(MACRO_ROWS, yearKey(row));
     const macro = toNumber(macroRow?.real_gdp ?? macroRow?.gdp ?? macroRow?.nominal_gdp, null);
-
     return macro !== null && Number.isFinite(macro) ? macro : null;
   }
 
@@ -322,100 +260,77 @@
 
     const macroRow = findRowByYear(MACRO_ROWS, yearKey(row));
     const macro = toNumber(macroRow?.population, null);
-
     return macro !== null && Number.isFinite(macro) ? macro : null;
   }
 
   function getPopulationMillions(row) {
     const raw = getPopulationRaw(row);
-    if (raw === null || !Number.isFinite(raw)) return 0;
-
-    if (raw > 10000) return raw / 1000000;
-
-    return raw;
+    if (raw === null || !Number.isFinite(raw)) return null;
+    return raw > 10000 ? raw / 1000000 : raw;
   }
 
   function getGDPPerCapita(row) {
     const gdpBillions = getGDP(row);
     const popRaw = getPopulationRaw(row);
 
-    if (gdpBillions === null || popRaw === null || popRaw <= 0) return 0;
+    if (gdpBillions === null || popRaw === null || popRaw <= 0) return null;
 
-    if (popRaw > 10000) {
-      return (gdpBillions * 1000000000) / popRaw;
-    }
-
+    if (popRaw > 10000) return (gdpBillions * 1000000000) / popRaw;
     return (gdpBillions * 1000) / popRaw;
   }
 
   function getRawInterestFromFiscal(row) {
-    const year = yearKey(row);
-    const fiscalRow = findRowByYear(FISCAL_ROWS, year);
+    const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row));
 
-    if (!fiscalRow) return 0;
+    // This is the key fix:
+    // Interest does NOT exist before FY2011 in your fiscal output.
+    // Returning null means the chart completely skips FY2001–FY2010.
+    if (!fiscalRow) return null;
 
     let value = toNumber(fiscalRow.interest_cost, null);
+    if (value === null || !Number.isFinite(value)) return null;
 
-    if (value === null || !Number.isFinite(value)) return 0;
-
-    if (value > 5000) {
-      console.warn("Interest on debt was too high; dividing by 100:", { year, value });
-      value = value / 100;
-    }
-
-    if (value > 5000) {
-      console.warn("Interest on debt still too high; hiding bad value:", { year, value });
-      value = 0;
-    }
+    if (value > 5000) value = value / 100;
+    if (value > 5000) return null;
 
     return value;
   }
 
-  function getComputedValue(row, key) {
-    if (!row || !key) return 0;
+  function getRawDeficitDisplay(row) {
+    const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row)) || row;
 
-    if (key === "__interest_from_fiscal__") {
-      return getRawInterestFromFiscal(row);
+    const finalSurplusDeficit = toNumber(fiscalRow.final_surplus_deficit, null);
+
+    if (finalSurplusDeficit !== null && Number.isFinite(finalSurplusDeficit)) {
+      return Math.abs(finalSurplusDeficit);
     }
 
-    if (key === "__gdp_per_capita__") {
-      return getGDPPerCapita(row);
-    }
+    const fallback = toNumber(fiscalRow.raw_deficit ?? fiscalRow.deficit ?? fiscalRow.deficit_surplus, null);
 
-    if (key === "population") {
-      return getPopulationMillions(row);
-    }
-
-    if (key === "other_mandatory_cost") {
-      const direct = toNumber(row.other_mandatory_cost, null);
-      return direct !== null && Number.isFinite(direct) ? direct : 0;
-    }
-
-    if (key === "mandatory_direct_cost") {
-      const direct = toNumber(row.mandatory_direct_cost, null);
-      return direct !== null && Number.isFinite(direct) ? direct : 0;
-    }
-
-    const direct = toNumber(row[key], null);
-
-    if (direct !== null && Number.isFinite(direct)) {
-      return direct;
+    if (fallback !== null && Number.isFinite(fallback)) {
+      return Math.abs(fallback);
     }
 
     return null;
   }
 
+  function getComputedValue(row, key) {
+    if (!row || !key) return null;
+
+    if (key === "__interest_from_fiscal__") return getRawInterestFromFiscal(row);
+    if (key === "__raw_deficit_display__") return getRawDeficitDisplay(row);
+    if (key === "__gdp_per_capita__") return getGDPPerCapita(row);
+    if (key === "population") return getPopulationMillions(row);
+
+    const direct = toNumber(row[key], null);
+    return direct !== null && Number.isFinite(direct) ? direct : null;
+  }
+
   function getValue(row, keys) {
     for (const key of keys) {
       const value = getComputedValue(row, key);
-
-      if (value !== null && value !== undefined && Number.isFinite(value)) {
-        if (value !== 0) return value;
-        if (key.startsWith("__")) return value;
-        if (cleanCell(row?.[key]) !== "") return value;
-      }
+      if (value !== null && value !== undefined && Number.isFinite(value)) return value;
     }
-
     return null;
   }
 
@@ -437,8 +352,7 @@
     const year = firstValue(row, ["year"], "");
 
     if (month && year && !String(month).includes(String(year))) {
-      const monthName = monthNumberToName(month);
-      return `${monthName || month} ${year}`;
+      return `${monthNumberToName(month) || month} ${year}`;
     }
 
     return month || year || String(index + 1);
@@ -455,36 +369,17 @@
     }
 
     if (stat.id === "gdp_per_capita") {
-      return `${stat.prefix || ""}${value.toLocaleString(undefined, {
-        maximumFractionDigits: 0
-      })}`;
+      return `${stat.prefix || ""}${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
     }
 
-    const abs = Math.abs(value);
-    let body;
-
-    if (stat.prefix === "$" && abs >= 1000000000000) {
-      body = `${(value / 1000000000000).toFixed(2)}T`;
-    } else if (stat.prefix === "$" && abs >= 1000000000) {
-      body = `${(value / 1000000000).toFixed(2)}B`;
-    } else if (stat.prefix === "$" && abs >= 1000000) {
-      body = `${(value / 1000000).toFixed(2)}M`;
-    } else {
-      body = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    }
-
+    const body = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
     return `${stat.prefix || ""}${body}${stat.suffix || ""}`;
   }
 
   function formatMovement(diff, stat = {}) {
     if (diff === null || diff === undefined || Number.isNaN(diff)) return "—";
-
     const sign = diff > 0 ? "+" : "";
-
-    if (stat.changeType === "pp") {
-      return `${sign}${diff.toFixed(2)} pp`;
-    }
-
+    if (stat.changeType === "pp") return `${sign}${diff.toFixed(2)} pp`;
     return `${sign}${formatValue(diff, stat)}`;
   }
 
@@ -496,10 +391,7 @@
 
   async function safeFetch(sheetName) {
     try {
-      if (!fetchSheets) {
-        throw new Error("APRP.fetchSheets missing. sheets.js did not load before economy.js.");
-      }
-
+      if (!fetchSheets) throw new Error("APRP.fetchSheets missing. sheets.js did not load before economy.js.");
       const data = await fetchSheets([sheetName]);
       return data?.[sheetName] || [];
     } catch (error) {
@@ -549,7 +441,6 @@
       if (!y) return false;
       if (y < CURRENT_YEAR) return true;
       if (y > CURRENT_YEAR) return false;
-
       if (!m || !CURRENT_MONTH) return true;
 
       return m <= CURRENT_MONTH;
@@ -586,16 +477,7 @@
   }
 
   async function loadData() {
-    const [
-      econ,
-      monthly,
-      control,
-      macro,
-      fiscal,
-      revenue,
-      discretionary,
-      mandatory
-    ] = await Promise.all([
+    const [econ, monthly, control, macro, fiscal, revenue, discretionary, mandatory] = await Promise.all([
       safeFetch("WEB_ECON"),
       safeFetch("MONTHLY_ENGINE"),
       safeFetch("CONTROL_CONFIG"),
@@ -624,11 +506,7 @@
     FISCAL_ROWS = filterRowsToCurrentPeriod(fiscal || []);
     REVENUE_ROWS = filterRowsToCurrentPeriod(revenue || []);
     DISCRETIONARY_ROWS = filterRowsToCurrentPeriod(discretionary || []);
-
-    MANDATORY_ROWS = mergeRowsByYear(
-      filterRowsToCurrentPeriod(mandatory || []),
-      MACRO_ROWS
-    );
+    MANDATORY_ROWS = mergeRowsByYear(filterRowsToCurrentPeriod(mandatory || []), MACRO_ROWS);
 
     DASHBOARD_ROWS = mergeRowsByYear(
       ECON_ROWS,
@@ -641,17 +519,9 @@
 
     clampDefaultChartYears();
 
-    console.log("FISCAL INTEREST CHECK", FISCAL_ROWS.map((row) => ({
-      year: yearKey(row),
-      interest_cost: row.interest_cost
-    })));
-
-    console.log("GDP PER CAPITA CHECK", DASHBOARD_ROWS.map((row) => ({
-      year: yearKey(row),
-      gdp: getGDP(row),
-      populationRaw: getPopulationRaw(row),
-      populationM: getPopulationMillions(row),
-      gdpPerCapita: getGDPPerCapita(row)
+    console.log("INTEREST CHECK — should start FY2011 only", FISCAL_ROWS.map((r) => ({
+      year: yearKey(r),
+      interest_cost: r.interest_cost
     })));
   }
 
@@ -660,17 +530,8 @@
     return valid[valid.length - 1] || {};
   }
 
-  function latestMacroRow() {
-    return latestRow(DASHBOARD_ROWS, YEARLY_STATS);
-  }
-
-  function previousMacroRow() {
-    const valid = DASHBOARD_ROWS.filter((row) => YEARLY_STATS.some((stat) => getValue(row, stat.keys) !== null));
-    return valid[valid.length - 2] || {};
-  }
-
   function rowForSelectedCompareYear() {
-    return findRowByYear(DASHBOARD_ROWS, SELECTED_COMPARE_YEAR) || latestMacroRow();
+    return findRowByYear(DASHBOARD_ROWS, SELECTED_COMPARE_YEAR) || latestRow(DASHBOARD_ROWS, YEARLY_STATS);
   }
 
   function rowBeforeYear(year) {
@@ -715,13 +576,6 @@
     const style = document.createElement("style");
     style.id = "aprp-economy-runtime-style";
     style.textContent = `
-      body {
-        background:
-          radial-gradient(circle at top left, rgba(15,23,42,.10), transparent 34%),
-          radial-gradient(circle at top right, rgba(30,64,175,.10), transparent 30%),
-          #eee8dc;
-      }
-
       .section { padding: 24px 0; }
       .section-tight { padding-top: 22px; }
       .container-wide { width: min(1540px, calc(100% - 44px)); margin: 0 auto; }
@@ -840,6 +694,18 @@
         font-weight: 850;
       }
 
+      .econ-range-panel {
+        border: 1px solid rgba(15,23,42,.12);
+        border-radius: 16px;
+        background: rgba(255,255,255,.66);
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
       .econ-control-card {
         display: flex;
         flex-wrap: wrap;
@@ -848,8 +714,7 @@
         justify-content: flex-end;
       }
 
-      .econ-select,
-      .econ-input {
+      .econ-select {
         border: 1px solid rgba(15,23,42,.16);
         border-radius: 999px;
         background: rgba(255,255,255,.9);
@@ -866,18 +731,6 @@
         font-weight: 1000;
         letter-spacing: .08em;
         text-transform: uppercase;
-      }
-
-      .econ-range-panel {
-        border: 1px solid rgba(15,23,42,.12);
-        border-radius: 16px;
-        background: rgba(255,255,255,.66);
-        padding: 10px;
-        display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
       }
 
       .econ-movement-list { display: grid; gap: 7px; }
@@ -1007,41 +860,6 @@
         text-align: center;
       }
 
-      .econ-record-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0 6px;
-      }
-
-      .econ-record-table th {
-        text-align: left;
-        color: #1d4ed8;
-        font-size: .56rem;
-        letter-spacing: .1em;
-        text-transform: uppercase;
-        padding: 0 7px;
-      }
-
-      .econ-record-table td {
-        padding: 8px 7px;
-        background: rgba(248,250,252,.92);
-        border-top: 1px solid rgba(15,23,42,.09);
-        border-bottom: 1px solid rgba(15,23,42,.09);
-        color: #07111f;
-        font-size: .78rem;
-        font-weight: 850;
-      }
-
-      .econ-record-table td:first-child {
-        border-left: 1px solid rgba(15,23,42,.09);
-        border-radius: 10px 0 0 10px;
-      }
-
-      .econ-record-table td:last-child {
-        border-right: 1px solid rgba(15,23,42,.09);
-        border-radius: 0 10px 10px 0;
-      }
-
       .econ-pie-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1096,63 +914,40 @@
         border-radius: 999px;
       }
 
-      .econ-pie-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: none;
-        place-items: center;
-        padding: 20px;
-        background: rgba(2,6,23,.72);
-        backdrop-filter: blur(8px);
+      .econ-record-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 6px;
       }
 
-      .econ-pie-modal.is-open { display: grid; }
-
-      .econ-pie-modal-card {
-        width: min(980px, 96vw);
-        max-height: 92vh;
-        overflow: auto;
-        border-radius: 24px;
-        background: #f8fafc;
-        border: 1px solid rgba(255,255,255,.22);
-        box-shadow: 0 28px 80px rgba(0,0,0,.35);
-        padding: 18px;
+      .econ-record-table th {
+        text-align: left;
+        color: #1d4ed8;
+        font-size: .56rem;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        padding: 0 7px;
       }
 
-      .econ-pie-modal-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: start;
-        gap: 12px;
-        margin-bottom: 12px;
-      }
-
-      .econ-pie-modal-top h2 {
-        margin: 0;
+      .econ-record-table td {
+        padding: 8px 7px;
+        background: rgba(248,250,252,.92);
+        border-top: 1px solid rgba(15,23,42,.09);
+        border-bottom: 1px solid rgba(15,23,42,.09);
         color: #07111f;
-        font-family: Georgia, serif;
+        font-size: .78rem;
+        font-weight: 850;
       }
 
-      .econ-pie-close {
-        border: 0;
-        border-radius: 999px;
-        background: #07111f;
-        color: #fff;
-        font-weight: 1000;
-        padding: 8px 12px;
-        cursor: pointer;
+      .econ-record-table td:first-child {
+        border-left: 1px solid rgba(15,23,42,.09);
+        border-radius: 10px 0 0 10px;
       }
 
-      .econ-pie-modal-body {
-        display: grid;
-        grid-template-columns: 420px minmax(0, 1fr);
-        gap: 16px;
-        align-items: center;
+      .econ-record-table td:last-child {
+        border-right: 1px solid rgba(15,23,42,.09);
+        border-radius: 0 10px 10px 0;
       }
-
-      .econ-pie-modal-body .econ-pie-svg { width: 420px; height: 420px; }
-      .econ-pie-modal-body .econ-pie-legend { max-height: 420px; }
 
       @media (max-width: 1200px) {
         .econ-top-grid, .econ-chart-grid { grid-template-columns: 1fr; }
@@ -1161,12 +956,6 @@
 
       @media (max-width: 1000px) {
         .econ-pie-grid { grid-template-columns: 1fr; }
-        .econ-pie-modal-body { grid-template-columns: 1fr; }
-        .econ-pie-modal-body .econ-pie-svg {
-          width: min(420px, 82vw);
-          height: min(420px, 82vw);
-          margin: auto;
-        }
       }
 
       @media (max-width: 700px) {
@@ -1253,7 +1042,6 @@
 
   function polarToCartesian(cx, cy, r, angleDeg) {
     const angleRad = (angleDeg - 90) * Math.PI / 180;
-
     return {
       x: cx + r * Math.cos(angleRad),
       y: cy + r * Math.sin(angleRad)
@@ -1283,7 +1071,7 @@
         label,
         value: getComputedValue(row, key)
       }))
-      .filter((item) => item.value > 0)
+      .filter((item) => item.value !== null && item.value > 0)
       .sort((a, b) => b.value - a.value);
   }
 
@@ -1350,12 +1138,12 @@
     `;
   }
 
-  function pieCard(title, subtitle, row, fields, modalId) {
+  function pieCard(title, subtitle, row, fields) {
     const items = buildPieData(row, fields);
     const total = items.reduce((sum, item) => sum + item.value, 0);
 
     return `
-      <article class="econ-pie-card" data-pie-modal="${safeHTML(modalId)}">
+      <article class="econ-pie-card">
         <div class="econ-eyebrow">Current Fiscal Year</div>
         <h3>${safeHTML(title)}</h3>
         <div class="econ-chart-meta">${safeHTML(subtitle)} • ${safeHTML(formatValue(total, { prefix: "$" }))}</div>
@@ -1367,80 +1155,10 @@
     `;
   }
 
-  function pieModal(id, title, row, fields) {
-    const items = buildPieData(row, fields);
-    const total = items.reduce((sum, item) => sum + item.value, 0);
-
-    return `
-      <div class="econ-pie-modal" id="${safeHTML(id)}" aria-hidden="true">
-        <div class="econ-pie-modal-card">
-          <div class="econ-pie-modal-top">
-            <div>
-              <div class="econ-eyebrow">Expanded Current Fiscal Year Chart</div>
-              <h2>${safeHTML(title)}</h2>
-              <p class="econ-note">Total: ${safeHTML(formatValue(total, { prefix: "$" }))}</p>
-            </div>
-            <button class="econ-pie-close" type="button" data-pie-close>Close</button>
-          </div>
-          <div class="econ-pie-modal-body">
-            ${renderPieSvg(items, 420)}
-            ${renderPieLegend(items)}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function setupPieModals() {
-    document.querySelectorAll("[data-pie-modal]").forEach((card) => {
-      card.addEventListener("click", () => {
-        const modal = document.getElementById(card.dataset.pieModal);
-        if (!modal) return;
-
-        modal.classList.add("is-open");
-        modal.setAttribute("aria-hidden", "false");
-      });
-    });
-
-    document.querySelectorAll("[data-pie-close]").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-
-        const modal = button.closest(".econ-pie-modal");
-        if (!modal) return;
-
-        modal.classList.remove("is-open");
-        modal.setAttribute("aria-hidden", "true");
-      });
-    });
-
-    document.querySelectorAll(".econ-pie-modal").forEach((modal) => {
-      modal.addEventListener("click", (event) => {
-        if (event.target !== modal) return;
-
-        modal.classList.remove("is-open");
-        modal.setAttribute("aria-hidden", "true");
-      });
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-
-      document.querySelectorAll(".econ-pie-modal.is-open").forEach((modal) => {
-        modal.classList.remove("is-open");
-        modal.setAttribute("aria-hidden", "true");
-      });
-    });
-  }
-
   function macroTile(stat, latest, previous) {
     const value = getValue(latest, stat.keys);
     const previousValue = getValue(previous, stat.keys);
-
-    const diff =
-      value === null || previousValue === null
-        ? null
-        : value - previousValue;
+    const diff = value === null || previousValue === null ? null : value - previousValue;
 
     return `
       <div class="econ-tile">
@@ -1464,7 +1182,6 @@
     const latest = points[points.length - 1];
     const previous = points[points.length - 2] || null;
     const twelveAgo = points.length >= 13 ? points[0] : null;
-
     const oneMonth = previous ? latest.value - previous.value : null;
     const twelveMonth = twelveAgo ? latest.value - twelveAgo.value : null;
 
@@ -1537,93 +1254,34 @@
     return group === "All" ? stats : stats.filter((stat) => stat.group === group);
   }
 
-  function currentYearRangeLabel() {
-    if (!CHART_START_YEAR || !CHART_END_YEAR) return "All years";
-    return `FY${CHART_START_YEAR}–FY${CHART_END_YEAR}`;
+  function yearlyPoints(stat) {
+    const raw = DASHBOARD_ROWS.map((row, index) => {
+      const value = getValue(row, stat.keys);
+      if (value === null) return null;
+      return { label: yearLabel(row, index), value, row };
+    }).filter(Boolean);
+
+    return applyYearRange(raw);
   }
 
-  function renderYearRangeControls() {
-    const years = allAvailableYears();
-    if (!years.length) return "";
+  function rowPoints(rows, stat) {
+    const raw = rows.map((row, index) => {
+      const value = getValue(row, stat.keys);
+      if (value === null) return null;
+      return { label: yearLabel(row, index), value, row };
+    }).filter(Boolean);
 
-    const options = years.map((year) => `<option value="${year}">FY${year}</option>`).join("");
-
-    return `
-      <div class="econ-range-panel">
-        <div>
-          <div class="econ-eyebrow">Chart Range</div>
-          <p class="econ-note">Viewing ${safeHTML(currentYearRangeLabel())}. Use the controls to narrow chart years.</p>
-        </div>
-
-        <div class="econ-control-card">
-          <span class="econ-control-label">From</span>
-          <select class="econ-select" id="econ-chart-start">
-            ${options}
-          </select>
-
-          <span class="econ-control-label">To</span>
-          <select class="econ-select" id="econ-chart-end">
-            ${options}
-          </select>
-
-          <button class="econ-filter-btn" type="button" id="econ-chart-range-apply">Apply</button>
-          <button class="econ-filter-btn" type="button" id="econ-chart-range-all">All</button>
-        </div>
-      </div>
-    `;
+    return applyYearRange(raw);
   }
 
-  function setupYearRangeControls() {
-    const start = getEl("#econ-chart-start");
-    const end = getEl("#econ-chart-end");
+  function monthlyPoints(stat) {
+    const points = MONTHLY_ROWS.map((row, index) => {
+      const value = getValue(row, stat.keys);
+      if (value === null) return null;
+      return { label: monthLabel(row, index), value, row };
+    }).filter(Boolean);
 
-    if (start && CHART_START_YEAR) start.value = String(CHART_START_YEAR);
-    if (end && CHART_END_YEAR) end.value = String(CHART_END_YEAR);
-
-    const apply = getEl("#econ-chart-range-apply");
-    if (apply) {
-      apply.addEventListener("click", () => {
-        const startValue = toNumber(start?.value, null);
-        const endValue = toNumber(end?.value, null);
-
-        if (startValue && endValue && startValue <= endValue) {
-          CHART_START_YEAR = startValue;
-          CHART_END_YEAR = endValue;
-        }
-
-        rerenderChartsOnly();
-        const rangeText = getEl("#econ-range-current-text");
-        if (rangeText) rangeText.textContent = currentYearRangeLabel();
-      });
-    }
-
-    const all = getEl("#econ-chart-range-all");
-    if (all) {
-      all.addEventListener("click", () => {
-        const years = allAvailableYears();
-        CHART_START_YEAR = years[0] || null;
-        CHART_END_YEAR = years[years.length - 1] || null;
-
-        if (start && CHART_START_YEAR) start.value = String(CHART_START_YEAR);
-        if (end && CHART_END_YEAR) end.value = String(CHART_END_YEAR);
-
-        rerenderChartsOnly();
-      });
-    }
-  }
-
-  function rerenderChartsOnly() {
-    const yearlyGroup = getEl("#econ-yearly-filters .econ-filter-btn.is-active")?.textContent || "All";
-    const monthlyGroup = getEl("#econ-monthly-filters .econ-filter-btn.is-active")?.textContent || "All";
-    const revenueGroup = getEl("#econ-revenue-filters .econ-filter-btn.is-active")?.textContent || "All";
-    const spendingGroup = getEl("#econ-spending-filters .econ-filter-btn.is-active")?.textContent || "All";
-    const mandatoryGroup = getEl("#econ-mandatory-filters .econ-filter-btn.is-active")?.textContent || "All";
-
-    renderYearlyCharts(yearlyGroup);
-    renderMonthlyCharts(monthlyGroup);
-    renderRevenueCharts(revenueGroup);
-    renderSpendingCharts(spendingGroup);
-    renderMandatoryCharts(mandatoryGroup);
+    return MONTHLY_RANGE === "12" ? points.slice(-12) : points;
   }
 
   function renderYearlyCharts(group = "All") {
@@ -1714,15 +1372,84 @@
 
     button.addEventListener("click", () => {
       MONTHLY_RANGE = value;
-
       container.querySelectorAll(".econ-filter-btn").forEach((btn) => btn.classList.remove("is-active"));
       button.classList.add("is-active");
-
       const activeGroup = getEl("#econ-monthly-filters .econ-filter-btn.is-active")?.textContent || "All";
       renderMonthlyCharts(activeGroup);
     });
 
     container.appendChild(button);
+  }
+
+  function currentYearRangeLabel() {
+    if (!CHART_START_YEAR || !CHART_END_YEAR) return "All years";
+    return `FY${CHART_START_YEAR}–FY${CHART_END_YEAR}`;
+  }
+
+  function renderYearRangeControls() {
+    const years = allAvailableYears();
+    if (!years.length) return "";
+
+    const options = years.map((year) => `<option value="${year}">FY${year}</option>`).join("");
+
+    return `
+      <div class="econ-range-panel">
+        <div>
+          <div class="econ-eyebrow">Chart Range</div>
+          <p class="econ-note">Viewing ${safeHTML(currentYearRangeLabel())}. Use the controls to narrow chart years.</p>
+        </div>
+
+        <div class="econ-control-card">
+          <span class="econ-control-label">From</span>
+          <select class="econ-select" id="econ-chart-start">${options}</select>
+
+          <span class="econ-control-label">To</span>
+          <select class="econ-select" id="econ-chart-end">${options}</select>
+
+          <button class="econ-filter-btn" type="button" id="econ-chart-range-apply">Apply</button>
+          <button class="econ-filter-btn" type="button" id="econ-chart-range-all">All</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function rerenderChartsOnly() {
+    renderYearlyCharts(getEl("#econ-yearly-filters .econ-filter-btn.is-active")?.textContent || "All");
+    renderMonthlyCharts(getEl("#econ-monthly-filters .econ-filter-btn.is-active")?.textContent || "All");
+    renderRevenueCharts(getEl("#econ-revenue-filters .econ-filter-btn.is-active")?.textContent || "All");
+    renderSpendingCharts(getEl("#econ-spending-filters .econ-filter-btn.is-active")?.textContent || "All");
+    renderMandatoryCharts(getEl("#econ-mandatory-filters .econ-filter-btn.is-active")?.textContent || "All");
+  }
+
+  function setupYearRangeControls() {
+    const start = getEl("#econ-chart-start");
+    const end = getEl("#econ-chart-end");
+
+    if (start && CHART_START_YEAR) start.value = String(CHART_START_YEAR);
+    if (end && CHART_END_YEAR) end.value = String(CHART_END_YEAR);
+
+    getEl("#econ-chart-range-apply")?.addEventListener("click", () => {
+      const startValue = toNumber(start?.value, null);
+      const endValue = toNumber(end?.value, null);
+
+      if (startValue && endValue && startValue <= endValue) {
+        CHART_START_YEAR = startValue;
+        CHART_END_YEAR = endValue;
+      }
+
+      rerenderChartsOnly();
+    });
+
+    getEl("#econ-chart-range-all")?.addEventListener("click", () => {
+      const years = allAvailableYears();
+      CHART_START_YEAR = years[0] || null;
+      CHART_END_YEAR = years[years.length - 1] || null;
+
+      if (start && CHART_START_YEAR) start.value = String(CHART_START_YEAR);
+      if (end && CHART_END_YEAR) end.value = String(CHART_END_YEAR);
+
+      rerenderChartsOnly();
+    });
   }
 
   function renderCompareDropdown() {
@@ -1737,14 +1464,12 @@
       <div class="econ-range-panel">
         <div>
           <div class="econ-eyebrow">Previous Fiscal Year Lookup</div>
-          <p class="econ-note">Choose a fiscal year to show its macro snapshot above, compared against the prior available year.</p>
+          <p class="econ-note">Choose any fiscal year to show its macro snapshot above.</p>
         </div>
 
         <div class="econ-control-card">
           <span class="econ-control-label">Fiscal Year</span>
-          <select class="econ-select" id="econ-compare-year">
-            ${options}
-          </select>
+          <select class="econ-select" id="econ-compare-year">${options}</select>
         </div>
       </div>
     `;
@@ -1780,18 +1505,9 @@
       .slice(-10)
       .reverse();
 
-    if (!rows.length) {
-      return `<div class="econ-panel"><p class="econ-note">No yearly records found.</p></div>`;
-    }
+    if (!rows.length) return "";
 
-    const gdp = YEARLY_STATS.find((s) => s.id === "gdp");
-    const debt = YEARLY_STATS.find((s) => s.id === "debt");
-    const revenue = YEARLY_STATS.find((s) => s.id === "total_revenue");
-    const spending = YEARLY_STATS.find((s) => s.id === "total_spending");
-    const deficit = YEARLY_STATS.find((s) => s.id === "deficit");
-    const interest = YEARLY_STATS.find((s) => s.id === "interest_cost");
-    const unemployment = YEARLY_STATS.find((s) => s.id === "unemployment");
-    const inflation = YEARLY_STATS.find((s) => s.id === "inflation");
+    const stat = (id) => YEARLY_STATS.find((s) => s.id === id);
 
     return `
       <section class="econ-panel">
@@ -1815,14 +1531,14 @@
             ${rows.map((row, index) => `
               <tr>
                 <td>${safeHTML(yearLabel(row, index))}</td>
-                <td>${safeHTML(formatValue(getValue(row, gdp.keys), gdp))}</td>
-                <td>${safeHTML(formatValue(getValue(row, debt.keys), debt))}</td>
-                <td>${safeHTML(formatValue(getValue(row, revenue.keys), revenue))}</td>
-                <td>${safeHTML(formatValue(getValue(row, spending.keys), spending))}</td>
-                <td>${safeHTML(formatValue(getValue(row, deficit.keys), deficit))}</td>
-                <td>${safeHTML(formatValue(getValue(row, interest.keys), interest))}</td>
-                <td>${safeHTML(formatValue(getValue(row, unemployment.keys), unemployment))}</td>
-                <td>${safeHTML(formatValue(getValue(row, inflation.keys), inflation))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("gdp").keys), stat("gdp")))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("debt").keys), stat("debt")))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("total_revenue").keys), stat("total_revenue")))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("total_spending").keys), stat("total_spending")))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("deficit").keys), stat("deficit")))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("interest_cost").keys), stat("interest_cost")))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("unemployment").keys), stat("unemployment")))}</td>
+                <td>${safeHTML(formatValue(getValue(row, stat("inflation").keys), stat("inflation")))}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -1842,6 +1558,7 @@
     const latestMandatory = latestRow(MANDATORY_ROWS, MANDATORY_STATS);
 
     const displayYear = yearKey(latest) || CURRENT_YEAR || "Latest";
+
     const currentPeriodLabel = CURRENT_YEAR
       ? CURRENT_MONTH
         ? `Showing through ${monthNumberToName(CURRENT_MONTH)} ${CURRENT_YEAR}`
@@ -1891,19 +1608,15 @@
               <div>
                 <div class="econ-eyebrow">Current Fiscal Year Breakdown</div>
                 <h2>Budget Composition</h2>
-                <p>Revenue includes UCare revenue. Mandatory includes UCare spending and interest on debt from the fiscal output sheet.</p>
+                <p>Revenue includes UCare revenue. Mandatory includes UCare spending and interest on debt from FY2011 onward only.</p>
               </div>
             </div>
 
             <div class="econ-pie-grid">
-              ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS, "revenue-pie-modal")}
-              ${pieCard("Discretionary Spending", "Departments, agencies, and event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS, "spending-pie-modal")}
-              ${pieCard("Mandatory Spending", "Entitlements, interest, obligations, and other costs", latestMandatory, PIE_MANDATORY_FIELDS, "mandatory-pie-modal")}
+              ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS)}
+              ${pieCard("Discretionary Spending", "Departments, agencies, and event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS)}
+              ${pieCard("Mandatory Spending", "Entitlements, interest, obligations, and other costs", latestMandatory, PIE_MANDATORY_FIELDS)}
             </div>
-
-            ${pieModal("revenue-pie-modal", "Revenue Breakdown", latestRevenue, PIE_REVENUE_FIELDS)}
-            ${pieModal("spending-pie-modal", "Discretionary Spending Breakdown", latestDiscretionary, PIE_DISCRETIONARY_FIELDS)}
-            ${pieModal("mandatory-pie-modal", "Mandatory Spending Breakdown", latestMandatory, PIE_MANDATORY_FIELDS)}
           </section>
 
           <section class="econ-section">
@@ -1911,13 +1624,12 @@
               <div>
                 <div class="econ-eyebrow">Yearly Charts</div>
                 <h2>Economic Trends</h2>
-                <p>Yearly indicators filtered by chart range, including macro, fiscal, revenue, spending, and population.</p>
+                <p>Yearly indicators filtered by chart range. Interest on debt starts at FY2011 and does not show fake pre-2011 zero data.</p>
               </div>
               <div class="econ-filter-bar" id="econ-yearly-filters"></div>
             </div>
 
             ${renderYearRangeControls()}
-
             <div id="econ-yearly-charts"></div>
           </section>
 
@@ -1941,7 +1653,7 @@
               <div>
                 <div class="econ-eyebrow">Revenue Engine</div>
                 <h2>Revenue Breakdown</h2>
-                <p>Tracks income, corporate, payroll, UCare revenue, capital gains, excise, event revenue, and total revenue.</p>
+                <p>Tracks income, payroll, UCare revenue, capital gains, excise, event revenue, and total revenue.</p>
               </div>
               <div class="econ-filter-bar" id="econ-revenue-filters"></div>
             </div>
@@ -2001,7 +1713,7 @@
 
     const revenueFilters = getEl("#econ-revenue-filters");
     if (revenueFilters) {
-      ["All", "Income", "Corporate", "Payroll", "UCare", "Capital Gains", "Other", "Totals"].forEach((group, index) => {
+      ["All", "Income", "Payroll", "UCare", "Capital Gains", "Other", "Totals"].forEach((group, index) => {
         addFilterButton(revenueFilters, group, index === 0, renderRevenueCharts);
       });
     }
@@ -2028,7 +1740,6 @@
     renderRevenueCharts("All");
     renderSpendingCharts("All");
     renderMandatoryCharts("All");
-    setupPieModals();
   }
 
   function updateHeroCard() {
