@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  console.log("ECONOMY.JS LOADED — v20260515-deficit-gdp-fullfix");
+  console.log("ECONOMY.JS LOADED — v20260515-revenue-total-fullfix");
 
   const APRP = window.APRP || {};
   const fetchSheets = APRP.fetchSheets;
@@ -36,9 +36,7 @@
     const num = toNumber(raw, null);
 
     if (num === null || !Number.isFinite(num)) return null;
-
     if (raw.includes("%")) return num;
-
     if (Math.abs(num) <= 1) return num * 100;
 
     return num;
@@ -170,15 +168,25 @@
 
   const PIE_REVENUE_FIELDS = [
     ["payroll_social_security_revenue", "Social Security Payroll"],
+    ["payroll_medicare_revenue", "Medicare Payroll"],
+    ["payroll_worker_revenue", "Worker Payroll"],
+
+    ["income_0_10k_revenue", "Income $0–10k"],
+    ["income_10_30k_revenue", "Income $10k–30k"],
+    ["income_30_60k_revenue", "Income $30k–60k"],
     ["income_60_100k_revenue", "Income $60k–100k"],
     ["income_100_250k_revenue", "Income $100k–250k"],
-    ["income_30_60k_revenue", "Income $30k–60k"],
-    ["payroll_medicare_revenue", "Medicare Payroll"],
-    ["income_10_30k_revenue", "Income $10k–30k"],
     ["income_250_500k_revenue", "Income $250k–500k"],
+
     ["ucare_revenue", "UCare Revenue"],
+
     ["sales_tax_revenue", "Sales Tax"],
-    ["excise_tax_revenue", "Excise Tax"]
+    ["cap_gains_short_term_revenue", "Short-Term Capital Gains"],
+    ["cap_gains_long_term_revenue", "Long-Term Capital Gains"],
+    ["excise_tax_revenue", "Excise Tax"],
+
+    ["event_revenue_impact", "Event Revenue Impact"],
+    ["direct_revenue", "Direct Revenue"]
   ];
 
   const PIE_DISCRETIONARY_FIELDS = [
@@ -191,7 +199,19 @@
     ["energy_spending", "Energy"],
     ["justice_spending", "Justice"],
     ["state_foreign_affairs_spending", "State / Foreign Affairs"],
-    ["housing_urban_development_spending", "HUD"]
+    ["housing_urban_development_spending", "HUD"],
+    ["treasury_spending", "Treasury"],
+    ["interior_natural_resources_spending", "Interior / Natural Resources"],
+    ["agriculture_spending", "Agriculture"],
+    ["commerce_spending", "Commerce"],
+    ["labor_spending", "Labor"],
+    ["environmental_protection_spending", "EPA"],
+    ["nasa_spending", "NASA"],
+    ["sba_spending", "SBA"],
+    ["other_agencies_spending", "Other Agencies"],
+    ["general_government_spending", "General Government"],
+    ["event_direct_cost", "Event Direct Cost"],
+    ["event_cost_from_pct_gdp", "Event GDP Cost"]
   ];
 
   const PIE_MANDATORY_FIELDS = [
@@ -206,13 +226,15 @@
     ["child_health_cost", "Child Health"],
     ["fed_military_retirement_cost", "Military Retirement"],
     ["fed_civilian_retirement_cost", "Civilian Retirement"],
-    ["snap_cost", "SNAP"]
+    ["snap_cost", "SNAP"],
+    ["mandatory_direct_cost", "Other Mandatory Direct Cost"]
   ];
 
   const PIE_COLORS = [
-    "#1d4ed8", "#b91c1c", "#047857", "#7c3aed", "#c2410c",
-    "#0f766e", "#be123c", "#4338ca", "#a16207", "#0369a1",
-    "#15803d", "#6d28d9", "#dc2626", "#2563eb"
+    "#1d4ed8", "#ef4444", "#10b981", "#c084fc", "#f97316",
+    "#14b8a6", "#f43f5e", "#6366f1", "#eab308", "#0ea5e9",
+    "#22c55e", "#8b5cf6", "#dc2626", "#2563eb", "#7c3aed",
+    "#b45309", "#0f766e", "#be123c", "#4338ca", "#64748b"
   ];
 
   function getEl(selector) {
@@ -259,11 +281,12 @@
   }
 
   function getGDP(row) {
-    const direct = toNumber(row.real_gdp ?? row.gdp ?? row.nominal_gdp, null);
+    const direct = toNumber(row?.real_gdp ?? row?.gdp ?? row?.nominal_gdp, null);
     if (direct !== null && Number.isFinite(direct)) return direct;
 
     const macroRow = findRowByYear(MACRO_ROWS, yearKey(row));
     const macro = toNumber(macroRow?.real_gdp ?? macroRow?.gdp ?? macroRow?.nominal_gdp, null);
+
     return macro !== null && Number.isFinite(macro) ? macro : null;
   }
 
@@ -271,12 +294,12 @@
     const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row)) || row;
 
     const direct = toNumber(
-      fiscalRow.ending_debt ??
-      fiscalRow.debt ??
-      fiscalRow.national_debt ??
-      row.ending_debt ??
-      row.debt ??
-      row.national_debt,
+      fiscalRow?.ending_debt ??
+      fiscalRow?.debt ??
+      fiscalRow?.national_debt ??
+      row?.ending_debt ??
+      row?.debt ??
+      row?.national_debt,
       null
     );
 
@@ -284,11 +307,12 @@
   }
 
   function getPopulationRaw(row) {
-    const direct = toNumber(row.population, null);
+    const direct = toNumber(row?.population, null);
     if (direct !== null && Number.isFinite(direct)) return direct;
 
     const macroRow = findRowByYear(MACRO_ROWS, yearKey(row));
     const macro = toNumber(macroRow?.population, null);
+
     return macro !== null && Number.isFinite(macro) ? macro : null;
   }
 
@@ -305,20 +329,21 @@
     if (gdpBillions === null || popRaw === null || popRaw <= 0) return null;
 
     if (popRaw > 10000) return (gdpBillions * 1000000000) / popRaw;
+
     return (gdpBillions * 1000) / popRaw;
   }
 
   function getRawInterestFromFiscal(row) {
     const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row));
 
-    // Important:
     // Interest only exists in YEARLY_FISCAL_OUTPUT from FY2011 onward.
-    // Returning null means charts skip pre-FY2011 completely.
+    // Returning null completely removes FY2001–FY2010 from the interest chart.
     if (!fiscalRow) return null;
 
     let value = toNumber(fiscalRow.interest_cost, null);
     if (value === null || !Number.isFinite(value)) return null;
 
+    // Safety guard for accidentally scaled sheet values.
     if (value > 5000) value = value / 100;
     if (value > 5000) return null;
 
@@ -328,18 +353,20 @@
   function getRawDeficitDisplay(row) {
     const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row)) || row;
 
-    const finalSurplusDeficit = toNumber(fiscalRow.final_surplus_deficit, null);
+    const finalSurplusDeficit = toNumber(fiscalRow?.final_surplus_deficit, null);
 
     if (finalSurplusDeficit !== null && Number.isFinite(finalSurplusDeficit)) {
-      // Deficit stored as negative in sheet.
-      // Dashboard should show deficit as positive.
-      // If it is a surplus, show as negative deficit.
       return finalSurplusDeficit < 0
         ? Math.abs(finalSurplusDeficit)
         : -Math.abs(finalSurplusDeficit);
     }
 
-    const fallback = toNumber(fiscalRow.raw_deficit ?? fiscalRow.deficit ?? fiscalRow.deficit_surplus, null);
+    const fallback = toNumber(
+      fiscalRow?.raw_deficit ??
+      fiscalRow?.deficit ??
+      fiscalRow?.deficit_surplus,
+      null
+    );
 
     if (fallback !== null && Number.isFinite(fallback)) {
       return Math.abs(fallback);
@@ -351,7 +378,7 @@
   function getDeficitGDPDisplay(row) {
     const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row)) || row;
 
-    const finalSurplusDeficit = toNumber(fiscalRow.final_surplus_deficit, null);
+    const finalSurplusDeficit = toNumber(fiscalRow?.final_surplus_deficit, null);
     const gdp = getGDP(row);
 
     if (
@@ -368,16 +395,18 @@
     const rawDeficit = getRawDeficitDisplay(row);
 
     if (rawDeficit !== null && gdp !== null && gdp > 0) {
-      return rawDeficit >= 0 ? (Math.abs(rawDeficit) / gdp) * 100 : -(Math.abs(rawDeficit) / gdp) * 100;
+      return rawDeficit >= 0
+        ? (Math.abs(rawDeficit) / gdp) * 100
+        : -(Math.abs(rawDeficit) / gdp) * 100;
     }
 
     const direct = normalizePct(
-      fiscalRow.deficit_pct_gdp ??
-      fiscalRow.deficit_gdp ??
-      fiscalRow.deficit_to_gdp ??
-      row.deficit_pct_gdp ??
-      row.deficit_gdp ??
-      row.deficit_to_gdp
+      fiscalRow?.deficit_pct_gdp ??
+      fiscalRow?.deficit_gdp ??
+      fiscalRow?.deficit_to_gdp ??
+      row?.deficit_pct_gdp ??
+      row?.deficit_gdp ??
+      row?.deficit_to_gdp
     );
 
     if (direct !== null && Number.isFinite(direct)) {
@@ -391,10 +420,10 @@
     const fiscalRow = findRowByYear(FISCAL_ROWS, yearKey(row)) || row;
 
     const direct = normalizePct(
-      fiscalRow.debt_to_gdp ??
-      fiscalRow.debt_gdp ??
-      row.debt_to_gdp ??
-      row.debt_gdp
+      fiscalRow?.debt_to_gdp ??
+      fiscalRow?.debt_gdp ??
+      row?.debt_to_gdp ??
+      row?.debt_gdp
     );
 
     if (direct !== null && Number.isFinite(direct)) {
@@ -430,6 +459,7 @@
       const value = getComputedValue(row, key);
       if (value !== null && value !== undefined && Number.isFinite(value)) return value;
     }
+
     return null;
   }
 
@@ -477,8 +507,13 @@
 
   function formatMovement(diff, stat = {}) {
     if (diff === null || diff === undefined || Number.isNaN(diff)) return "—";
+
     const sign = diff > 0 ? "+" : "";
-    if (stat.changeType === "pp") return `${sign}${diff.toFixed(2)} pp`;
+
+    if (stat.changeType === "pp") {
+      return `${sign}${diff.toFixed(2)} pp`;
+    }
+
     return `${sign}${formatValue(diff, stat)}`;
   }
 
@@ -490,7 +525,10 @@
 
   async function safeFetch(sheetName) {
     try {
-      if (!fetchSheets) throw new Error("APRP.fetchSheets missing. sheets.js did not load before economy.js.");
+      if (!fetchSheets) {
+        throw new Error("APRP.fetchSheets missing. sheets.js did not load before economy.js.");
+      }
+
       const data = await fetchSheets([sheetName]);
       return data?.[sheetName] || [];
     } catch (error) {
@@ -618,8 +656,9 @@
 
     clampDefaultChartYears();
 
-    console.log("DEFICIT CHECK", DASHBOARD_ROWS.map((row) => ({
+    console.log("ECONOMY CHECK", DASHBOARD_ROWS.map((row) => ({
       year: yearKey(row),
+      totalRevenue: getComputedValue(row, "total_revenue"),
       rawDeficit: getRawDeficitDisplay(row),
       deficitGdp: getDeficitGDPDisplay(row),
       interest: getRawInterestFromFiscal(row)
@@ -973,7 +1012,6 @@
         background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(241,245,249,.9));
         box-shadow: 0 12px 26px rgba(15,23,42,.08);
         padding: 12px;
-        cursor: pointer;
       }
 
       .econ-pie-wrap {
@@ -1176,8 +1214,44 @@
       .sort((a, b) => b.value - a.value);
   }
 
-  function renderPieSvg(items, size = 150) {
-    const total = items.reduce((sum, item) => sum + item.value, 0);
+  function findOfficialTotal(row, officialTotalKeys = []) {
+    for (const key of officialTotalKeys) {
+      const value = getComputedValue(row, key);
+
+      if (value !== null && Number.isFinite(value)) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  function addUnlistedSlice(items, officialTotal, label) {
+    const sliceTotal = items.reduce((sum, item) => sum + item.value, 0);
+
+    if (officialTotal === null || !Number.isFinite(officialTotal)) {
+      return items;
+    }
+
+    const missing = officialTotal - sliceTotal;
+
+    if (missing > 0.01) {
+      return [
+        ...items,
+        {
+          key: "__unlisted__",
+          label,
+          value: missing
+        }
+      ];
+    }
+
+    return items;
+  }
+
+  function renderPieSvg(items, size = 150, officialTotal = null) {
+    const sliceTotal = items.reduce((sum, item) => sum + item.value, 0);
+    const total = officialTotal !== null && Number.isFinite(officialTotal) ? officialTotal : sliceTotal;
 
     if (!items.length || total <= 0) {
       return `<div class="econ-empty">No current-year data.</div>`;
@@ -1191,7 +1265,7 @@
     let angle = 0;
 
     const paths = items.map((item, index) => {
-      const slice = (item.value / total) * 360;
+      const slice = Math.max(0, (item.value / total) * 360);
       const start = angle;
       const end = angle + slice;
       angle = end;
@@ -1219,8 +1293,9 @@
     `;
   }
 
-  function renderPieLegend(items) {
-    const total = items.reduce((sum, item) => sum + item.value, 0);
+  function renderPieLegend(items, officialTotal = null) {
+    const sliceTotal = items.reduce((sum, item) => sum + item.value, 0);
+    const total = officialTotal !== null && Number.isFinite(officialTotal) ? officialTotal : sliceTotal;
 
     return `
       <div class="econ-pie-legend">
@@ -1239,18 +1314,21 @@
     `;
   }
 
-  function pieCard(title, subtitle, row, fields) {
-    const items = buildPieData(row, fields);
-    const total = items.reduce((sum, item) => sum + item.value, 0);
+  function pieCard(title, subtitle, row, fields, officialTotalKeys = [], unlistedLabel = "Other / Unlisted") {
+    const rawItems = buildPieData(row, fields);
+    const officialTotal = findOfficialTotal(row, officialTotalKeys);
+    const sliceTotal = rawItems.reduce((sum, item) => sum + item.value, 0);
+    const displayTotal = officialTotal !== null && Number.isFinite(officialTotal) ? officialTotal : sliceTotal;
+    const items = addUnlistedSlice(rawItems, displayTotal, unlistedLabel);
 
     return `
       <article class="econ-pie-card">
         <div class="econ-eyebrow">Current Fiscal Year</div>
         <h3>${safeHTML(title)}</h3>
-        <div class="econ-chart-meta">${safeHTML(subtitle)} • ${safeHTML(formatValue(total, { prefix: "$" }))}</div>
+        <div class="econ-chart-meta">${safeHTML(subtitle)} • ${safeHTML(formatValue(displayTotal, { prefix: "$" }))}</div>
         <div class="econ-pie-wrap">
-          ${renderPieSvg(items, 150)}
-          ${renderPieLegend(items)}
+          ${renderPieSvg(items, 150, displayTotal)}
+          ${renderPieLegend(items, displayTotal)}
         </div>
       </article>
     `;
@@ -1353,36 +1431,6 @@
 
   function filterStats(stats, group) {
     return group === "All" ? stats : stats.filter((stat) => stat.group === group);
-  }
-
-  function yearlyPoints(stat) {
-    const raw = DASHBOARD_ROWS.map((row, index) => {
-      const value = getValue(row, stat.keys);
-      if (value === null) return null;
-      return { label: yearLabel(row, index), value, row };
-    }).filter(Boolean);
-
-    return applyYearRange(raw);
-  }
-
-  function rowPoints(rows, stat) {
-    const raw = rows.map((row, index) => {
-      const value = getValue(row, stat.keys);
-      if (value === null) return null;
-      return { label: yearLabel(row, index), value, row };
-    }).filter(Boolean);
-
-    return applyYearRange(raw);
-  }
-
-  function monthlyPoints(stat) {
-    const points = MONTHLY_ROWS.map((row, index) => {
-      const value = getValue(row, stat.keys);
-      if (value === null) return null;
-      return { label: monthLabel(row, index), value, row };
-    }).filter(Boolean);
-
-    return MONTHLY_RANGE === "12" ? points.slice(-12) : points;
   }
 
   function renderYearlyCharts(group = "All") {
@@ -1590,6 +1638,7 @@
       if (title) title.textContent = `${yearKey(selected)} Key Indicators`;
 
       const grid = getEl("#econ-key-tile-grid");
+
       if (grid) {
         const tileStats = TOP_YEARLY_TILES
           .map((id) => YEARLY_STATS.find((stat) => stat.id === id))
@@ -1711,14 +1760,37 @@
               <div>
                 <div class="econ-eyebrow">Current Fiscal Year Breakdown</div>
                 <h2>Budget Composition</h2>
-                <p>Revenue includes UCare revenue. Mandatory includes UCare spending and interest on debt from FY2011 onward only.</p>
+                <p>Revenue includes UCare revenue and adds missing categories as Other / Unlisted Revenue when the listed categories do not equal total revenue.</p>
               </div>
             </div>
 
             <div class="econ-pie-grid">
-              ${pieCard("Revenue Breakdown", "Federal receipts by category", latestRevenue, PIE_REVENUE_FIELDS)}
-              ${pieCard("Discretionary Spending", "Departments, agencies, and event costs", latestDiscretionary, PIE_DISCRETIONARY_FIELDS)}
-              ${pieCard("Mandatory Spending", "Entitlements, interest, obligations, and other costs", latestMandatory, PIE_MANDATORY_FIELDS)}
+              ${pieCard(
+                "Revenue Breakdown",
+                "Federal receipts by category",
+                latestRevenue,
+                PIE_REVENUE_FIELDS,
+                ["total_revenue"],
+                "Other / Unlisted Revenue"
+              )}
+
+              ${pieCard(
+                "Discretionary Spending",
+                "Departments, agencies, and event costs",
+                latestDiscretionary,
+                PIE_DISCRETIONARY_FIELDS,
+                ["total_discretionary_spending"],
+                "Other / Unlisted Discretionary"
+              )}
+
+              ${pieCard(
+                "Mandatory Spending",
+                "Entitlements, interest, obligations, and other costs",
+                latestMandatory,
+                PIE_MANDATORY_FIELDS,
+                ["total_mandatory_spending"],
+                "Other / Unlisted Mandatory"
+              )}
             </div>
           </section>
 
@@ -1756,7 +1828,7 @@
               <div>
                 <div class="econ-eyebrow">Revenue Engine</div>
                 <h2>Revenue Breakdown</h2>
-                <p>Tracks income, payroll, UCare revenue, capital gains, excise, event revenue, and total revenue.</p>
+                <p>Tracks income, payroll, UCare revenue, capital gains, excise, event revenue, direct revenue, and total revenue.</p>
               </div>
               <div class="econ-filter-bar" id="econ-revenue-filters"></div>
             </div>
@@ -1855,7 +1927,6 @@
     const latestMandatory = latestRow(MANDATORY_ROWS, MANDATORY_STATS);
 
     const year = yearKey(latest) || CURRENT_YEAR || "Latest";
-
     const monthlyCount = MONTHLY_ROWS.length.toLocaleString();
     const yearlyCount = DASHBOARD_ROWS.length.toLocaleString();
 
