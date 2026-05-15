@@ -7,7 +7,7 @@
 
   <title>Economy | APRP Federal Archive</title>
 
-  <link rel="stylesheet" href="./assets/css/style.css?v=20260515-deficit-interest-fullrewrite" />
+  <link rel="stylesheet" href="./assets/css/style.css?v=20260515-revenue-total-fullfix" />
 
   <style>
     :root {
@@ -15,16 +15,24 @@
       --navy: #07111f;
       --navy-2: #14233a;
       --blue: #1d4ed8;
+      --blue-soft: #93c5fd;
       --muted: #475569;
       --soft: #64748b;
       --line: rgba(15, 23, 42, 0.14);
       --panel: rgba(248, 250, 252, 0.9);
       --cream: #eee8dc;
       --shadow: 0 16px 42px rgba(15, 23, 42, 0.12);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
     }
 
     * {
       box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
     }
 
     body {
@@ -41,6 +49,11 @@
     a {
       color: inherit;
       text-decoration: none;
+    }
+
+    button,
+    select {
+      font-family: inherit;
     }
 
     .archive-shell {
@@ -95,6 +108,10 @@
       font-size: 1.05rem;
     }
 
+    .brand-text {
+      min-width: 0;
+    }
+
     .brand-text strong {
       display: block;
       color: var(--ink);
@@ -137,6 +154,12 @@
       font-weight: 1000;
       line-height: 1;
       box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+      transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+    }
+
+    .archive-nav a:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.95);
     }
 
     .archive-nav a.active {
@@ -185,7 +208,7 @@
       overflow: hidden;
       min-height: 300px;
       border: 1px solid rgba(15, 23, 42, 0.14);
-      border-radius: 28px;
+      border-radius: var(--radius-xl);
       padding: 40px 42px;
       background:
         radial-gradient(circle at 87% 22%, rgba(99, 102, 241, 0.16), transparent 28%),
@@ -204,6 +227,7 @@
       border-radius: 999px;
       background: conic-gradient(from 130deg, #1d4ed8, #b91c1c, #047857, #7c3aed, #1d4ed8);
       opacity: 0.10;
+      pointer-events: none;
     }
 
     .eyebrow {
@@ -276,7 +300,7 @@
     .hero-side-card {
       min-height: 300px;
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 28px;
+      border-radius: var(--radius-xl);
       padding: 24px;
       color: #fff;
       background:
@@ -286,7 +310,7 @@
     }
 
     .hero-side-card .eyebrow {
-      color: #93c5fd;
+      color: var(--blue-soft);
     }
 
     .hero-side-card h2 {
@@ -304,6 +328,13 @@
       font-size: 0.88rem;
       line-height: 1.45;
       font-weight: 850;
+    }
+
+    .hero-side-card .text-small {
+      margin-top: 12px;
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      line-height: 1.5;
     }
 
     .loader-panel {
@@ -519,6 +550,11 @@
                 and economy script finish. If it remains here, an error panel below
                 will show the failing file, line, or script.
               </p>
+              <p class="text-small">
+                This page expects sheets.js first, then economy.js. The economy script
+                builds all macro tiles, donut charts, yearly charts, monthly charts,
+                revenue charts, discretionary charts, and mandatory charts.
+              </p>
             </aside>
           </section>
 
@@ -545,7 +581,7 @@
 
                 <div class="loading-step">
                   <span class="loading-dot"></span>
-                  <span>Building macro, budget, UCare, revenue, and mandatory charts</span>
+                  <span>Building macro, budget, UCare, revenue, deficit, and debt-interest charts</span>
                 </div>
               </div>
 
@@ -570,14 +606,20 @@
       const status = document.getElementById("economy-load-status");
       const errorBox = document.getElementById("economy-error-box");
 
+      function setStatus(text) {
+        if (status) status.textContent = text;
+      }
+
       function showError(message) {
-        if (status) status.textContent = "Load Error";
+        setStatus("Load Error");
+
         if (!errorBox) return;
+
         errorBox.classList.add("is-visible");
         errorBox.textContent = message;
       }
 
-      window.APRP_ECONOMY_HTML_VERSION = "20260515-deficit-interest-fullrewrite";
+      window.APRP_ECONOMY_HTML_VERSION = "20260515-revenue-total-fullfix";
 
       window.addEventListener("error", function (event) {
         showError(
@@ -595,19 +637,22 @@
           (event.reason && event.reason.message ? event.reason.message : String(event.reason))
         );
       });
+
+      window.APRP_ECONOMY_SET_STATUS = setStatus;
+      window.APRP_ECONOMY_SHOW_ERROR = showError;
     })();
   </script>
 
   <script
-    src="./assets/js/sheets.js?v=20260515-deficit-interest-fullrewrite"
-    onload="document.getElementById('economy-load-status') && (document.getElementById('economy-load-status').textContent = 'Sheets Loaded')"
-    onerror="document.getElementById('economy-error-box').classList.add('is-visible');document.getElementById('economy-error-box').textContent='Failed to load ./assets/js/sheets.js. Check the filename/path in your repository.';"
+    src="./assets/js/sheets.js?v=20260515-revenue-total-fullfix"
+    onload="window.APRP_ECONOMY_SET_STATUS && window.APRP_ECONOMY_SET_STATUS('Sheets Loaded')"
+    onerror="window.APRP_ECONOMY_SHOW_ERROR && window.APRP_ECONOMY_SHOW_ERROR('Failed to load ./assets/js/sheets.js. Check the filename/path in your repository.')"
   ></script>
 
   <script
-    src="./assets/js/economy.js?v=20260515-deficit-interest-fullrewrite"
-    onload="document.getElementById('economy-load-status') && (document.getElementById('economy-load-status').textContent = 'Dashboard Loaded')"
-    onerror="document.getElementById('economy-error-box').classList.add('is-visible');document.getElementById('economy-error-box').textContent='Failed to load ./assets/js/economy.js. Check the filename/path in your repository.';"
+    src="./assets/js/economy.js?v=20260515-revenue-total-fullfix"
+    onload="window.APRP_ECONOMY_SET_STATUS && window.APRP_ECONOMY_SET_STATUS('Dashboard Loaded')"
+    onerror="window.APRP_ECONOMY_SHOW_ERROR && window.APRP_ECONOMY_SHOW_ERROR('Failed to load ./assets/js/economy.js. Check the filename/path in your repository.')"
   ></script>
 </body>
 </html>
